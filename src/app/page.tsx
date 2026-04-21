@@ -84,7 +84,7 @@ export default function AlphaWaveGlobalEngine() {
                   : 'text-white/40 hover:text-white'
               }`}
             >
-              <tab.icon size={10} className="md:size-[12px]" />
+              <tab.icon className="w-2.5 h-2.5 md:w-3 md:h-3" />
               <span className="hidden xs:inline">{tab.label}</span>
               <span className="xs:hidden">{tab.label.charAt(0)}</span>
             </button>
@@ -136,7 +136,7 @@ export default function AlphaWaveGlobalEngine() {
               <div className="relative w-full max-w-3xl group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-1000" />
                 <div className="relative flex items-center bg-white/[0.02] border-b-2 border-white/5 focus-within:border-primary/50 transition-all">
-                  <Search className="absolute left-6 text-white/10 group-focus-within:text-primary/50 transition-colors" size={20} md:size={28} />
+                  <Search className="absolute left-6 text-white/10 group-focus-within:text-primary/50 transition-colors w-5 h-5 md:w-7 md:h-7" />
                   <input 
                     type="text" 
                     autoFocus
