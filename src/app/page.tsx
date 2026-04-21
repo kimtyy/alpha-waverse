@@ -18,6 +18,17 @@ export default function AlphaWaveGlobalEngine() {
 
   const [activeTrack, setActiveTrack] = useState<SearchResult | null>(null);
   const [ownedAssets, setOwnedAssets] = useState<string[]>(['hwb-vol-1', 'haerin-demo-1']);
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  // Play audio when track changes
+  useEffect(() => {
+    if (activeTrack && audioRef.current) {
+      audioRef.current.src = activeTrack.url;
+      audioRef.current.play().catch(err => console.log("Audio play blocked:", err));
+    } else if (!activeTrack && audioRef.current) {
+      audioRef.current.pause();
+    }
+  }, [activeTrack]);
 
   // Simulate Real-time Asset Accumulation with Proof-of-Flow
   useEffect(() => {
@@ -417,6 +428,9 @@ export default function AlphaWaveGlobalEngine() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Hidden Sovereign Audio Engine */}
+      <audio ref={audioRef} className="hidden" />
 
     </main>
   );

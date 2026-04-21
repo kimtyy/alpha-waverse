@@ -15,7 +15,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Blues / Cinematic', 
     peerId: 'k-kim-nexus-1',
-    url: '/listen/hwb-vol5-01'
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-1-1.mp3'
   },
   { 
     id: 'haerin-grannum', 
@@ -23,7 +23,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Ballad / AI Soul', 
     peerId: 'haerim-fan-node-7',
-    url: '/listen/haerin-grannum'
+    url: '/audio/A-Letter-I-Never-Sent---Clara-Paige-1-1.mp3'
   },
   { 
     id: 'bitvana-zen', 
@@ -31,7 +31,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Lo-fi / Zen', 
     peerId: 'zen-master-node',
-    url: '/listen/bitvana-zen'
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-1-2.mp3'
   },
   { 
     id: 'alpha-rhythm-01', 
@@ -39,7 +39,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Focus / Ambient', 
     peerId: 'alpha-core-node-1',
-    url: '/listen/alpha-rhythm-01'
+    url: '/audio/A-Letter-I-Never-Sent---Clara-Paige-1-2.mp3'
   },
   { 
     id: 'soul-orbit-02', 
@@ -47,7 +47,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Soul / R&B', 
     peerId: 'k-indie-node-9',
-    url: '/listen/soul-orbit-02'
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-2-1.mp3'
   },
   { 
     id: 'techno-wave-03', 
@@ -55,7 +55,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Techno / Electronic', 
     peerId: 'berlin-under-7',
-    url: '/listen/techno-wave-03'
+    url: '/audio/A-Letter-I-Never-Sent---Clara-Paige-1-1.mp3'
   },
   { 
     id: 'lofi-study-04', 
@@ -63,7 +63,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Lo-fi / Chill', 
     peerId: 'study-girl-node',
-    url: '/listen/lofi-study-04'
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-2-2.mp3'
   },
   { 
     id: 'jazz-node-05', 
@@ -71,7 +71,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Jazz / Acoustic', 
     peerId: 'ny-jazz-club',
-    url: '/listen/jazz-node-05'
+    url: '/audio/A-Letter-I-Never-Sent---Clara-Paige-1-2.mp3'
   },
   { 
     id: 'k-pop-next-06', 
@@ -79,7 +79,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Future Pop', 
     peerId: 'korea-hq-alpha',
-    url: '/listen/k-pop-next-06'
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-1-1.mp3'
   },
   { 
     id: 'ambient-void-07', 
@@ -87,7 +87,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Ambient / Space', 
     peerId: 'nasa-audio-node',
-    url: '/listen/ambient-void-07'
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-2-1.mp3'
   },
   { 
     id: 'blues-road-08', 
@@ -95,7 +95,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Raw Blues', 
     peerId: 'texas-blues-man',
-    url: '/listen/blues-road-08'
+    url: '/audio/A-Letter-I-Never-Sent---Clara-Paige-1-1.mp3'
   },
   { 
     id: 'cinematic-epic-09', 
@@ -103,7 +103,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'Epic / Orchestral', 
     peerId: 'hollywood-score-4',
-    url: '/listen/cinematic-epic-09'
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-2-2.mp3'
   },
   { 
     id: 'vocal-ai-10', 
@@ -111,6 +111,6 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     type: 'Music', 
     category: 'AI Vocal / Trance', 
     peerId: 'vocaloid-omega',
-    url: '/listen/vocal-ai-10'
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-1-2.mp3'
   }
 ];
