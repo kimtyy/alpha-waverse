@@ -16,14 +16,29 @@ export default function AlphaWaveGlobalEngine() {
   const [hashPower, setHashPower] = useState(84.2);
   const [view, setView] = useState<'RADAR' | 'MARKET' | 'LIBRARY'>('RADAR');
 
-  // Simulate Real-time Asset Accumulation
+  const [activeTrack, setActiveTrack] = useState<SearchResult | null>(null);
+  const [ownedAssets, setOwnedAssets] = useState<string[]>(['hwb-vol-1', 'haerin-demo-1']);
+
+  // Simulate Real-time Asset Accumulation with Proof-of-Flow
   useEffect(() => {
     const interval = setInterval(() => {
-      setMinedShares(prev => prev + Math.random() * 0.0001);
+      // Base mining + bonus if activeTrack is playing (Proof-of-Flow)
+      const miningBonus = activeTrack ? 0.0003 : 0.0001;
+      setMinedShares(prev => prev + Math.random() * miningBonus);
       setHashPower(prev => Math.max(80, Math.min(95, prev + (Math.random() - 0.5) * 2)));
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [activeTrack]);
+
+  const handleAcquire = (item: MarketItem) => {
+    if (minedShares >= item.price) {
+      setMinedShares(prev => prev - item.price);
+      setOwnedAssets(prev => [...prev, item.id]);
+      alert(`[TRANSACTION CONFIRMED] ${item.name} has been decentralized to your node.`);
+    } else {
+      alert(`[INSUFFICIENT SHARES] You need ${(item.price - minedShares).toFixed(2)} more α to acquire this asset.`);
+    }
+  };
 
   const filteredResults = useMemo(() => {
     if (!search.trim()) return [];
@@ -133,7 +148,7 @@ export default function AlphaWaveGlobalEngine() {
                 </div>
               </div>
 
-              <div className="relative w-full max-w-3xl group">
+              <div className="relative w-full max-w-3xl group mb-8">
                 <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-1000" />
                 <div className="relative flex items-center bg-white/[0.02] border-b-2 border-white/5 focus-within:border-primary/50 transition-all">
                   <Search className="absolute left-6 text-white/10 group-focus-within:text-primary/50 transition-colors w-5 h-5 md:w-7 md:h-7" />
@@ -146,6 +161,40 @@ export default function AlphaWaveGlobalEngine() {
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
+              </div>
+
+              {/* Radar Search Results */}
+              <div className="w-full max-w-3xl flex flex-col gap-3">
+                {filteredResults.map((result) => (
+                  <motion.div 
+                    key={result.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    onClick={() => setActiveTrack(result)}
+                    className="premium-glass p-5 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer group hover:bg-primary/5 transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        <MusicIcon size={20} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg md:text-xl">{result.title}</h3>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-primary/50 uppercase tracking-widest">{result.category}</span>
+                          <span className="w-1 h-1 rounded-full bg-white/20" />
+                          <span className="text-[10px] font-bold opacity-30 lowercase">{result.peerId}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end opacity-40 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1.5 text-primary">
+                        <Activity size={12} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Connected</span>
+                      </div>
+                      <span className="text-[8px] font-bold">Signal Strength 98%</span>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </motion.div>
           )}
@@ -183,7 +232,17 @@ export default function AlphaWaveGlobalEngine() {
                           <span className="text-2xl font-black">{item.price.toFixed(1)}</span>
                           <span className="text-[10px] font-black text-secondary grayscale opacity-50 uppercase tracking-widest">α</span>
                         </div>
-                        <button className="bg-white/5 hover:bg-secondary text-white hover:text-black px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Acquire</button>
+                        <button 
+                          onClick={() => handleAcquire(item)}
+                          disabled={ownedAssets.includes(item.id)}
+                          className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                            ownedAssets.includes(item.id)
+                              ? 'bg-white/10 text-white/30 cursor-not-allowed'
+                              : 'bg-white/5 hover:bg-secondary text-white hover:text-black'
+                          }`}
+                        >
+                          {ownedAssets.includes(item.id) ? 'Acquired' : 'Acquire'}
+                        </button>
                       </div>
                     </div>
                   </motion.div>
@@ -209,17 +268,33 @@ export default function AlphaWaveGlobalEngine() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                {/* My Waves - Creations */}
+                {/* My Waves - Creations & Acquisitions */}
                 <div className="flex flex-col gap-6">
                   <div className="flex items-center justify-between px-4">
                     <div className="flex items-center gap-3">
                       <PlusCircle size={18} className="text-primary" />
-                      <h3 className="text-sm font-black uppercase tracking-widest">My Waves</h3>
+                      <h3 className="text-sm font-black uppercase tracking-widest">My Waves & Assets</h3>
                     </div>
-                    <span className="text-[10px] font-bold opacity-30 tracking-widest">2 ASSETS</span>
+                    <span className="text-[10px] font-bold opacity-30 tracking-widest">{ownedAssets.length} ASSETS</span>
                   </div>
                   
                   <div className="flex flex-col gap-4">
+                    {/* Render Owned Market Items */}
+                    {ALPHA_MARKET_DATA.filter(item => ownedAssets.includes(item.id)).map(item => (
+                      <div key={item.id} className="premium-glass p-6 rounded-3xl border border-white/5 flex items-center justify-between hover:bg-primary/5 transition-all">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                            <Database size={18} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">{item.name}</p>
+                            <p className="text-[8px] font-black opacity-30 uppercase tracking-widest">Acquired Node • Registered</p>
+                          </div>
+                        </div>
+                        <Share2 size={16} className="opacity-20 hover:opacity-100 cursor-pointer" />
+                      </div>
+                    ))}
+
                     <div className="premium-glass p-6 rounded-3xl border border-white/5 flex items-center justify-between hover:bg-primary/5 transition-all">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
@@ -281,6 +356,67 @@ export default function AlphaWaveGlobalEngine() {
           </motion.div>
         )}
       </div>
+
+      {/* Global Alpha Player HUD */}
+      <AnimatePresence>
+        {activeTrack && (
+          <motion.div 
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            exit={{ y: 100 }}
+            className="fixed bottom-0 left-0 right-0 z-[60] p-4 md:p-8 pointer-events-none"
+          >
+            <div className="max-w-4xl mx-auto premium-glass p-4 rounded-[32px] border border-primary/20 pointer-events-auto flex flex-col md:flex-row items-center gap-6 shadow-[0_-20px_50px_rgba(0,242,255,0.1)]">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center text-primary relative overflow-hidden group">
+                  <MusicIcon size={32} />
+                  <motion.div 
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="absolute inset-0 bg-primary/10 rounded-full"
+                  />
+                </div>
+                <div className="overflow-hidden">
+                  <h4 className="text-xl font-bold truncate">{activeTrack.title}</h4>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{activeTrack.category}</span>
+                    <span className="text-[10px] font-bold opacity-30 uppercase tracking-[0.2em]">Node: {activeTrack.peerId}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress & Controls Simulation */}
+              <div className="flex-1 w-full flex flex-col gap-2">
+                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden relative">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: "65%" }}
+                    transition={{ duration: 180, ease: "linear" }}
+                    className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_15px_rgba(0,242,255,0.5)]"
+                  />
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-bold opacity-30 tabular-nums">
+                  <span>02:14</span>
+                  <div className="flex items-center gap-2 text-primary animate-pulse">
+                    <Radio size={10} />
+                    <span className="uppercase tracking-widest">Validating Stream...</span>
+                  </div>
+                  <span>03:45</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setActiveTrack(null)}
+                  className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all"
+                >
+                  <PlusCircle size={20} className="rotate-45" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </main>
   );
