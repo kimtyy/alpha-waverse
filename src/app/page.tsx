@@ -51,25 +51,25 @@ export default function AlphaWaveGlobalEngine() {
       </div>
 
       {/* Diplomatic Executive HUD */}
-      <div className="fixed top-8 left-8 right-8 z-50 flex flex-wrap justify-between items-start gap-4 pointer-events-none">
+      <div className="fixed top-4 md:top-8 left-4 md:left-8 right-4 md:right-8 z-50 flex flex-col md:flex-row justify-between items-center md:items-start gap-4 pointer-events-none">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="premium-glass px-6 py-4 rounded-2xl flex flex-col gap-1 border-l-2 border-primary pointer-events-auto cursor-default"
+          className="premium-glass px-4 md:px-6 py-2 md:py-4 rounded-xl md:rounded-2xl flex flex-row md:flex-col items-center md:items-start gap-3 md:gap-1 border-l-2 border-primary pointer-events-auto cursor-default w-full md:w-auto justify-between md:justify-start"
         >
           <div className="flex items-center gap-2 text-primary/50">
             <Cpu size={12} />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Live Asset Accumulation</span>
+            <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em]">Asset Accumulation</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black tabular-nums tracking-tighter">
+            <span className="text-lg md:text-2xl font-black tabular-nums tracking-tighter">
               {minedShares.toFixed(4)}
             </span>
-            <span className="text-[10px] font-bold text-primary">α SHARES</span>
+            <span className="text-[8px] md:text-[10px] font-bold text-primary">α SHARES</span>
           </div>
         </motion.div>
 
-        <div className="flex gap-2 pointer-events-auto">
+        <div className="flex gap-1 md:gap-2 pointer-events-auto w-full md:w-auto justify-center">
           {[
             { id: 'RADAR', label: 'Radar', icon: Globe, color: 'primary' },
             { id: 'MARKET', label: 'Market', icon: ShoppingBag, color: 'secondary' },
@@ -78,14 +78,15 @@ export default function AlphaWaveGlobalEngine() {
             <button 
               key={tab.id}
               onClick={() => setView(tab.id as any)}
-              className={`premium-glass px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+              className={`premium-glass px-3 md:px-5 py-2 md:py-2.5 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 md:gap-2 flex-1 md:flex-none justify-center ${
                 view === tab.id 
                   ? `bg-${tab.color}/20 text-${tab.color} border-${tab.color}/30` 
                   : 'text-white/40 hover:text-white'
               }`}
             >
-              <tab.icon size={12} />
-              {tab.label}
+              <tab.icon size={10} className="md:size-[12px]" />
+              <span className="hidden xs:inline">{tab.label}</span>
+              <span className="xs:hidden">{tab.label.charAt(0)}</span>
             </button>
           ))}
         </div>
@@ -93,14 +94,14 @@ export default function AlphaWaveGlobalEngine() {
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="premium-glass px-6 py-4 rounded-2xl flex flex-col items-end gap-1 border-r-2 border-secondary pointer-events-auto cursor-default"
+          className="premium-glass px-4 md:px-6 py-2 md:py-4 rounded-xl md:rounded-2xl flex flex-row md:flex-col items-center md:items-end gap-3 md:gap-1 border-r-2 border-secondary pointer-events-auto cursor-default w-full md:w-auto justify-between md:justify-end"
         >
-          <div className="flex items-center gap-2 text-secondary/50">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Global Connectivity Power</span>
+          <div className="flex items-center gap-2 text-secondary/50 order-2 md:order-1">
+            <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em]">Connectivity</span>
             <TrendingUp size={12} />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-black tabular-nums">
+          <div className="flex items-baseline gap-2 order-1 md:order-2">
+            <span className="text-lg md:text-xl font-black tabular-nums lowercase">
               {hashPower.toFixed(1)} EH/s
             </span>
             <Zap size={12} className="text-secondary animate-pulse" />
@@ -108,7 +109,7 @@ export default function AlphaWaveGlobalEngine() {
         </motion.div>
       </div>
 
-      <div className="w-full max-w-5xl relative z-10 flex flex-col items-center pt-32">
+      <div className="w-full max-w-5xl relative z-10 flex flex-col items-center pt-48 md:pt-32 px-4 md:px-0">
         
         <AnimatePresence mode="wait">
           {view === 'RADAR' && (
@@ -119,28 +120,28 @@ export default function AlphaWaveGlobalEngine() {
               exit={{ opacity: 0, y: -20 }}
               className="w-full flex flex-col items-center"
             >
-              <div className="flex flex-col items-center mb-16 text-center">
-                <h1 className="text-5xl md:text-7xl font-black tracking-[0.3em] bg-gradient-to-b from-white via-white to-white/20 bg-clip-text text-transparent uppercase leading-tight mb-4">
+              <div className="flex flex-col items-center mb-10 md:mb-16 text-center">
+                <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-[0.2em] md:tracking-[0.3em] bg-gradient-to-b from-white via-white to-white/20 bg-clip-text text-transparent uppercase leading-tight mb-4">
                   ALPHA WAVE
                 </h1>
-                <div className="flex items-center gap-4 opacity-40">
+                <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 opacity-40">
                   <div className="flex items-center gap-1.5 ring-1 ring-white/10 px-3 py-1 rounded-full text-primary">
                     <Globe size={10} />
-                    <span className="text-[9px] font-bold tracking-[0.2em] uppercase">Network Sovereignty Active</span>
+                    <span className="text-[8px] md:text-[9px] font-bold tracking-[0.2em] uppercase">Network Sovereignty Active</span>
                   </div>
-                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.4em]">The Next Evolution of Sound</p>
+                  <p className="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] md:tracking-[0.4em]">The Next Evolution of Sound</p>
                 </div>
               </div>
 
               <div className="relative w-full max-w-3xl group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-1000" />
                 <div className="relative flex items-center bg-white/[0.02] border-b-2 border-white/5 focus-within:border-primary/50 transition-all">
-                  <Search className="absolute left-6 text-white/10 group-focus-within:text-primary/50 transition-colors" size={28} />
+                  <Search className="absolute left-6 text-white/10 group-focus-within:text-primary/50 transition-colors" size={20} md:size={28} />
                   <input 
                     type="text" 
                     autoFocus
                     placeholder="가치를 발견하고 상생의 파동에 동참하십시오" 
-                    className="w-full bg-transparent py-10 px-16 text-2xl md:text-3xl font-medium focus:outline-none placeholder:text-white/5 tracking-tighter text-center"
+                    className="w-full bg-transparent py-6 md:py-10 px-12 md:px-16 text-lg md:text-3xl font-medium focus:outline-none placeholder:text-white/5 tracking-tighter text-center"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
