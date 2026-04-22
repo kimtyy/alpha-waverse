@@ -88,6 +88,7 @@ export default function AlphaWaverseEngine() {
   const [playlist, setPlaylist] = useState<SearchResult[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // User Assets State
   const [likedTracks, setLikedTracks] = useState<string[]>([]);
@@ -99,11 +100,11 @@ export default function AlphaWaverseEngine() {
   // Search Debouncing Logic
   useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
+      setDebouncedSearchTerm(search);
     }, 300); // 300ms delay to give the user "thinking time"
 
     return () => clearTimeout(handler);
-  }, [searchTerm]);
+  }, [search]);
 
   // Data Persistence: Load from LocalStorage
   useEffect(() => {
@@ -180,7 +181,14 @@ export default function AlphaWaverseEngine() {
 
   // Mock Upload Function
   const handleUpload = () => {
-    const title = window.prompt(lang === 'KR' ? "등록할 음원의 이름을 입력하세요:" : "Enter the title of the asset to register:");
+    fileInputRef.current?.click();
+  };
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const title = window.prompt(lang === 'KR' ? "자산의 이름을 입력하세요:" : "Enter the title for this asset:", file.name.split('.')[0]);
     if (!title) return;
 
     setIsUploading(true);
@@ -196,6 +204,9 @@ export default function AlphaWaverseEngine() {
       setIsUploading(false);
       alert(lang === 'KR' ? "자산 등록이 완료되었습니다. 글로벌 ISRC 발급 대행이 시작되었습니다!" : "Asset registered! Global ISRC proxy registration initiated.");
     }, 3000);
+
+    // Reset file input
+    e.target.value = '';
   };
 
   useEffect(() => {
@@ -497,6 +508,13 @@ export default function AlphaWaverseEngine() {
                 </button>
 
                 <div className="flex flex-col items-center gap-3">
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={onFileChange} 
+                    accept="audio/*,video/*"
+                    className="hidden" 
+                  />
                   <div className="flex items-center gap-3">
                     <button 
                       onClick={() => playAll(ownedDisplayList as any)}
