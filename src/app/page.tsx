@@ -94,6 +94,16 @@ export default function AlphaWaverseEngine() {
   const [ownedAssets, setOwnedAssets] = useState<string[]>(['hwb-vol-1', 'haerin-demo-1']);
   const [isUploading, setIsUploading] = useState(false);
   const [showVision, setShowVision] = useState(false);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  // Search Debouncing Logic
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms delay to give the user "thinking time"
+
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
 
   // Data Persistence: Load from LocalStorage
   useEffect(() => {
@@ -188,18 +198,19 @@ export default function AlphaWaverseEngine() {
     }, 3000);
   };
 
-  const filteredResults = useMemo(() => {
-    if (!search) return [];
-    const lowerSearch = search.toLowerCase();
-    return WAVE_QUERY_DATA.filter(item => {
-      const titleMatch = item.title.toLowerCase().includes(lowerSearch);
-      const categoryMatch = item.category.toLowerCase().includes(lowerSearch);
-      // Logic for Korean keyword matching (e.g. searching '명상' for 'Meditation')
+  useEffect(() => {
+    if (!debouncedSearchTerm.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const filtered = WAVE_QUERY_DATA.filter(item => {
+      const titleMatch = item.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+      const categoryMatch = item.category.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
       const koreanMatch = (
-        (lowerSearch.includes('명상') && item.title.toLowerCase().includes('meditation')) ||
-        (lowerSearch.includes('딥') && item.title.toLowerCase().includes('deep')) ||
-        (lowerSearch.includes('흐름') && item.title.toLowerCase().includes('flow')) ||
-        (lowerSearch.includes('알파') && item.title.toLowerCase().includes('alpha'))
+        (debouncedSearchTerm.includes('명상') && item.title.toLowerCase().includes('meditation')) ||
+        (debouncedSearchTerm.includes('딥') && item.title.toLowerCase().includes('deep')) ||
+        (debouncedSearchTerm.includes('흐름') && item.title.toLowerCase().includes('flow')) ||
+        (debouncedSearchTerm.includes('알파') && item.title.toLowerCase().includes('alpha'))
       );
       return titleMatch || categoryMatch || koreanMatch;
     }).slice(0, 8);
