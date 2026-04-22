@@ -142,10 +142,10 @@ export default function AlphaWaveGlobalEngine() {
                 <motion.div 
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="flex flex-col items-center gap-8 md:gap-12 w-full mb-20"
+                  className="flex flex-col items-center gap-8 md:gap-12 w-full mb-20 px-4"
                 >
-                  <h1 className="text-4xl md:text-7xl font-black tracking-[0.3em] uppercase bg-gradient-to-b from-white to-white/20 bg-clip-text text-transparent leading-none">
-                    ALPHA WAVE
+                  <h1 className="text-4xl md:text-7xl font-black tracking-[0.3em] uppercase bg-gradient-to-b from-white to-white/20 bg-clip-text text-transparent leading-none text-center pl-[0.3em]">
+                    ALPHA WAVERS
                   </h1>
                   <div className="relative w-full max-w-2xl group">
                     <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity" />
