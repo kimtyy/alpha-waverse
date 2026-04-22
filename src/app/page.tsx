@@ -209,23 +209,21 @@ export default function AlphaWaverseEngine() {
     e.target.value = '';
   };
 
-  useEffect(() => {
-    if (!debouncedSearchTerm.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    const filtered = WAVE_QUERY_DATA.filter(item => {
-      const titleMatch = item.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
-      const categoryMatch = item.category.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+  const filteredResults = useMemo(() => {
+    if (!debouncedSearchTerm.trim()) return [];
+    const lowerSearch = debouncedSearchTerm.toLowerCase();
+    return WAVE_QUERY_DATA.filter(item => {
+      const titleMatch = item.title.toLowerCase().includes(lowerSearch);
+      const categoryMatch = item.category.toLowerCase().includes(lowerSearch);
       const koreanMatch = (
-        (debouncedSearchTerm.includes('명상') && item.title.toLowerCase().includes('meditation')) ||
-        (debouncedSearchTerm.includes('딥') && item.title.toLowerCase().includes('deep')) ||
-        (debouncedSearchTerm.includes('흐름') && item.title.toLowerCase().includes('flow')) ||
-        (debouncedSearchTerm.includes('알파') && item.title.toLowerCase().includes('alpha'))
+        (lowerSearch.includes('명상') && item.title.toLowerCase().includes('meditation')) ||
+        (lowerSearch.includes('딥') && item.title.toLowerCase().includes('deep')) ||
+        (lowerSearch.includes('흐름') && item.title.toLowerCase().includes('flow')) ||
+        (lowerSearch.includes('알파') && item.title.toLowerCase().includes('alpha'))
       );
       return titleMatch || categoryMatch || koreanMatch;
     }).slice(0, 8);
-  }, [search]);
+  }, [debouncedSearchTerm]);
 
   const toggleLike = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
