@@ -4,7 +4,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
-  Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward
+  Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward,
+  Trash2, Loader2, Plus, Check
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
 
@@ -29,7 +30,10 @@ export default function AlphaWaverseEngine() {
       vaultEmpty: "Vault is Empty",
       nodeCertified: "P2P Node Certified",
       validating: "Validating Status...",
-      streaming: "Streaming via P2P"
+      streaming: "Streaming via P2P",
+      uploadAsset: "Register New Asset",
+      uploading: "Encoding to P2P...",
+      uploadSuccess: "Asset Registered!"
     },
     KR: {
       wealth: "주권적 자산",
@@ -47,7 +51,10 @@ export default function AlphaWaverseEngine() {
       vaultEmpty: "보관함이 비어있습니다",
       nodeCertified: "P2P 노드 인증됨",
       validating: "상태 검증 중...",
-      streaming: "P2P 스트리밍 중"
+      streaming: "P2P 스트리밍 중",
+      uploadAsset: "새 음원 자산 등록",
+      uploading: "P2P 네트워크 인코딩 중...",
+      uploadSuccess: "자산 등록 완료!"
     }
   }[lang];
 
@@ -69,19 +76,25 @@ export default function AlphaWaverseEngine() {
   // User Assets State
   const [likedTracks, setLikedTracks] = useState<string[]>([]);
   const [ownedAssets, setOwnedAssets] = useState<string[]>(['hwb-vol-1', 'haerin-demo-1']);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Data Persistence: Load from LocalStorage
   useEffect(() => {
     const savedLikes = localStorage.getItem('alpha_waverse_likes');
-    if (savedLikes) {
-      setLikedTracks(JSON.parse(savedLikes));
-    }
+    if (savedLikes) setLikedTracks(JSON.parse(savedLikes));
+    
+    const savedOwned = localStorage.getItem('alpha_waverse_owned');
+    if (savedOwned) setOwnedAssets(JSON.parse(savedOwned));
   }, []);
 
   // Data Persistence: Save to LocalStorage
   useEffect(() => {
     localStorage.setItem('alpha_waverse_likes', JSON.stringify(likedTracks));
   }, [likedTracks]);
+
+  useEffect(() => {
+    localStorage.setItem('alpha_waverse_owned', JSON.stringify(ownedAssets));
+  }, [ownedAssets]);
 
   // Economy Stats Simulation
   const [minedShares, setMinedShares] = useState(124.5931);
@@ -138,6 +151,18 @@ export default function AlphaWaverseEngine() {
     }
   };
 
+  // Mock Upload Function
+  const handleUpload = () => {
+    const newId = `user-asset-${Date.now()}`;
+    // Add to owned assets
+    setOwnedAssets(prev => [newId, ...prev]);
+    // In a real app, we'd add to the global data, but here we simulate it
+    // by injecting it into WAVE_QUERY_DATA if it were mutable, 
+    // or we can just show a success toast.
+    setIsUploading(true);
+    setTimeout(() => setIsUploading(false), 2000);
+  };
+
   const filteredResults = useMemo(() => {
     if (!search) return [];
     const lowerSearch = search.toLowerCase();
@@ -158,6 +183,11 @@ export default function AlphaWaverseEngine() {
   const toggleLike = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setLikedTracks(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
+  };
+
+  const removeFromVault = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLikedTracks(prev => prev.filter(t => t !== id));
   };
 
   return (
@@ -291,11 +321,14 @@ export default function AlphaWaverseEngine() {
               className="w-full h-full flex flex-col pt-10 overflow-hidden"
             >
               <div className="flex flex-col items-center gap-4 mb-10 text-center">
-                <Heart size={32} className="text-red-500" />
+                <div className="relative">
+                  <Heart size={32} className="text-red-500" />
+                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute -inset-2 bg-red-500/10 blur-xl rounded-full" />
+                </div>
                 <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.vault}</h2>
                 <button 
                   onClick={() => playAll(WAVE_QUERY_DATA.filter(item => likedTracks.includes(item.id)))}
-                  className="flex items-center gap-2 bg-red-500 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform"
+                  className="flex items-center gap-2 bg-red-500 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(239,68,68,0.3)]"
                 >
                   <Play size={12} fill="currentColor" /> {T.playAllVault}
                 </button>
@@ -303,17 +336,23 @@ export default function AlphaWaverseEngine() {
               
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 pb-48">
                 {WAVE_QUERY_DATA.filter(item => likedTracks.includes(item.id)).map(item => (
-                  <div key={item.id} onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.filter(t => likedTracks.includes(t.id))); }} className={`premium-glass p-5 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer transition-all ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-red-500/5'}`}>
+                  <div 
+                    key={item.id} 
+                    onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.filter(t => likedTracks.includes(t.id))); setIsPlaying(true); }} 
+                    className={`premium-glass p-5 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer transition-all ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-red-500/5 group'}`}
+                  >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500">
-                        <MusicIcon size={20} />
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${activeTrack?.id === item.id ? 'bg-red-500 text-white' : 'bg-red-500/10 text-red-500 group-hover:scale-105'}`}>
+                        {activeTrack?.id === item.id && isPlaying ? <Activity size={20} className="animate-pulse" /> : <Play size={18} fill="currentColor" />}
                       </div>
                       <div>
-                        <p className="font-bold text-base md:text-lg">{item.title}</p>
-                        <p className="text-[8px] font-black opacity-30 uppercase">{item.isrc}</p>
+                        <p className="font-bold text-base md:text-lg tracking-tight">{item.title}</p>
+                        <p className="text-[8px] font-black opacity-30 uppercase tracking-widest">{item.isrc}</p>
                       </div>
                     </div>
-                    <button onClick={(e) => toggleLike(item.id, e)} className="text-red-500"><Heart size={18} fill="currentColor" /></button>
+                    <button onClick={(e) => removeFromVault(item.id, e)} className="text-white/20 hover:text-red-500 transition-colors p-2">
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 ))}
                 {likedTracks.length === 0 && (
@@ -335,33 +374,66 @@ export default function AlphaWaverseEngine() {
               className="w-full h-full flex flex-col pt-10 overflow-hidden"
             >
               <div className="flex flex-col items-center gap-4 mb-10 text-center">
-                <Cpu size={32} className="text-primary" />
+                <div className="relative">
+                  <Cpu size={32} className="text-primary" />
+                  <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 3 }} className="absolute -inset-4 bg-primary/5 blur-2xl rounded-full" />
+                </div>
                 <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.studio}</h2>
-                <button 
-                  onClick={() => playAll(WAVE_QUERY_DATA.filter(item => ownedAssets.includes(item.id)))}
-                  className="flex items-center gap-2 bg-primary text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform"
-                >
-                  <Play size={12} fill="currentColor" /> {T.playAllStudio}
-                </button>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => playAll(WAVE_QUERY_DATA.filter(item => ownedAssets.includes(item.id)))}
+                    className="flex items-center gap-2 bg-primary text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(var(--primary-rgb),0.3)]"
+                  >
+                    <Play size={12} fill="currentColor" /> {T.playAllStudio}
+                  </button>
+                  <button 
+                    onClick={handleUpload}
+                    disabled={isUploading}
+                    className="flex items-center gap-2 bg-white/5 border border-white/10 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-50"
+                  >
+                    {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                    {isUploading ? T.uploading : T.uploadAsset}
+                  </button>
+                </div>
               </div>
               
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4 pb-48">
-                {WAVE_QUERY_DATA.filter(item => ownedAssets.includes(item.id)).map(item => (
-                  <div key={item.id} onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.filter(t => ownedAssets.includes(t.id))); }} className={`premium-glass p-6 rounded-3xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-primary/5'}`}>
+                {isUploading && (
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="premium-glass p-6 rounded-3xl border border-primary/30 bg-primary/5 flex items-center justify-between animate-pulse">
                     <div className="flex items-center gap-5">
-                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                        <CloudUpload size={24} />
+                      <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+                        <Loader2 size={24} className="animate-spin" />
+                      </div>
+                      <div>
+                        <p className="text-base md:text-xl font-black tracking-tight opacity-50">New Sonic Asset...</p>
+                        <p className="text-[10px] font-black uppercase text-primary">{T.uploading}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                {WAVE_QUERY_DATA.filter(item => ownedAssets.includes(item.id)).map(item => (
+                  <div 
+                    key={item.id} 
+                    onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.filter(t => ownedAssets.includes(t.id))); setIsPlaying(true); }} 
+                    className={`premium-glass p-6 rounded-3xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-primary/5 group'}`}
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${activeTrack?.id === item.id ? 'bg-primary text-black shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]' : 'bg-primary/10 text-primary group-hover:scale-105'}`}>
+                        {activeTrack?.id === item.id && isPlaying ? <Activity size={24} className="animate-pulse" /> : <CloudUpload size={24} />}
                       </div>
                       <div>
                         <p className="text-base md:text-xl font-black tracking-tight">{item.title}</p>
-                        <div className="flex items-center gap-2 opacity-30 text-[10px] font-black uppercase">
+                        <div className="flex items-center gap-2 opacity-30 text-[10px] font-black uppercase tracking-widest">
                           <span>{item.status}</span>
                           <span className="w-1 h-1 rounded-full bg-white" />
-                          <span>{T.nodeCertified}</span>
+                          <span className="text-primary">{T.nodeCertified}</span>
                         </div>
                       </div>
                     </div>
-                    <Share2 size={20} className="text-white/20" />
+                    <div className="flex items-center gap-4">
+                      <div className="text-[8px] font-black px-2 py-1 bg-white/5 rounded border border-white/5 opacity-40">ISRC-PRO</div>
+                      <Share2 size={20} className="text-white/20 hover:text-primary transition-colors" />
+                    </div>
                   </div>
                 ))}
               </div>
