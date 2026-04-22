@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward,
-  Trash2, Loader2, Plus, Check, FileText
+  Trash2, Loader2, Plus, Check, FileText, Mic2
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
 
@@ -35,7 +35,8 @@ export default function AlphaWaverseEngine() {
       uploading: "Encoding to Global Node...",
       uploadSuccess: "Asset Registered!",
       formatHint: "Supports WAV, MP3, MP4 (Video)",
-      score: "View Score"
+      score: "View Score",
+      mr: "MR Mode"
     },
     KR: {
       wealth: "주권적 자산",
@@ -58,7 +59,8 @@ export default function AlphaWaverseEngine() {
       uploading: "글로벌 노드 인코딩 중...",
       uploadSuccess: "자산 등록 완료!",
       formatHint: "WAV, MP3, MP4(영상) 포맷 지원",
-      score: "악보 보기"
+      score: "악보 보기",
+      mr: "MR 모드"
     }
   }[lang];
 
@@ -572,6 +574,13 @@ export default function AlphaWaverseEngine() {
                 >
                   <FileText size={12} className="group-hover:text-primary transition-colors" />
                   <span className="text-[8px] font-black uppercase tracking-wider">{T.score}</span>
+                </button>
+                <button 
+                  onClick={() => alert(lang === 'KR' ? 'AI 보컬 제거 및 MR 추출 엔진이 가동 중입니다...' : 'AI Vocal Removal & MR Extraction Engine in progress...')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all group border border-white/5 hover:border-secondary/30"
+                >
+                  <Mic2 size={12} className="group-hover:text-secondary transition-colors" />
+                  <span className="text-[8px] font-black uppercase tracking-wider">{T.mr}</span>
                 </button>
                 <div className="flex items-center gap-2 border-l border-white/10 pl-3 ml-1">
                   <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 text-white hover:text-primary transition-colors">
