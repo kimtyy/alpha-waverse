@@ -83,11 +83,24 @@ export default function AlphaWaverseEngine() {
     return () => clearInterval(timer);
   }, []);
 
-  // Audio Playback Controller
+  // Audio Playback Sync Controller
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.play().catch(err => console.log("Play error:", err));
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isPlaying]);
+
+  // Audio Source Controller
   useEffect(() => {
     if (activeTrack && audioRef.current) {
       audioRef.current.src = activeTrack.url;
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(err => console.log("Play error:", err));
+      if (isPlaying) {
+        audioRef.current.play().catch(err => console.log("Source play error:", err));
+      }
     }
   }, [activeTrack]);
 
@@ -108,15 +121,25 @@ export default function AlphaWaverseEngine() {
     if (tracks.length > 0) {
       setPlaylist(tracks);
       setActiveTrack(tracks[0]);
+      setIsPlaying(true);
     }
   };
 
   const filteredResults = useMemo(() => {
     if (!search) return [];
-    return WAVE_QUERY_DATA.filter(item => 
-      item.title.toLowerCase().includes(search.toLowerCase()) || 
-      item.category.toLowerCase().includes(search.toLowerCase())
-    ).slice(0, 8);
+    const lowerSearch = search.toLowerCase();
+    return WAVE_QUERY_DATA.filter(item => {
+      const titleMatch = item.title.toLowerCase().includes(lowerSearch);
+      const categoryMatch = item.category.toLowerCase().includes(lowerSearch);
+      // Logic for Korean keyword matching (e.g. searching '명상' for 'Meditation')
+      const koreanMatch = (
+        (lowerSearch.includes('명상') && item.title.toLowerCase().includes('meditation')) ||
+        (lowerSearch.includes('딥') && item.title.toLowerCase().includes('deep')) ||
+        (lowerSearch.includes('흐름') && item.title.toLowerCase().includes('flow')) ||
+        (lowerSearch.includes('알파') && item.title.toLowerCase().includes('alpha'))
+      );
+      return titleMatch || categoryMatch || koreanMatch;
+    }).slice(0, 8);
   }, [search]);
 
   const toggleLike = (id: string, e: React.MouseEvent) => {
