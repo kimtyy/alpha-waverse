@@ -233,16 +233,18 @@ export default function AlphaWaveGlobalEngine() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-bold text-xl md:text-2xl">{result.title}</h3>
+                          <h3 className="font-bold text-xl md:text-2xl tracking-tighter">{result.title}</h3>
                           <div className="px-2 py-0.5 rounded-md bg-primary/20 border border-primary/30 flex items-center gap-1">
                             <Zap size={8} className="text-primary" />
-                            <span className="text-[7px] font-black uppercase text-primary tracking-tighter">Human-Vetted</span>
+                            <span className="text-[7px] font-black uppercase text-primary tracking-tighter">AI-PROVENANCE</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-[10px] font-black text-primary/50 uppercase tracking-widest">{result.category}</span>
                           <span className="w-1 h-1 rounded-full bg-white/20" />
-                          <span className="text-[10px] font-bold opacity-30 lowercase tracking-tight">Provenance ID: {result.peerId}</span>
+                          <span className="text-[10px] font-bold text-white/30 tracking-tight">ISRC: {result.isrc}</span>
+                          <span className="w-1 h-1 rounded-full bg-white/20" />
+                          <span className="text-[10px] font-black text-green-500/60 uppercase tracking-tighter">{result.status}</span>
                         </div>
                       </div>
                     </div>
@@ -431,13 +433,15 @@ export default function AlphaWaveGlobalEngine() {
                   />
                 </div>
                 <div className="overflow-hidden">
-                  <h4 className="text-2xl md:text-3xl font-black truncate leading-tight mb-2">{activeTrack.title}</h4>
+                  <h4 className="text-2xl md:text-3xl font-black truncate leading-tight mb-2 tracking-tighter">{activeTrack.title}</h4>
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="px-3 py-0.5 rounded bg-primary text-[10px] font-black text-black uppercase tracking-widest">{activeTrack.category}</span>
-                    <span className="text-[10px] font-black opacity-40 uppercase tracking-[0.2em]">P2P Node: {activeTrack.peerId}</span>
+                    <span className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em]">{activeTrack.isrc}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">{activeTrack.status}</span>
                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-white/10 text-[9px] font-bold text-white/40">
                       <Activity size={10} />
-                      <span>Atmos Spatial Active</span>
+                      <span>Dolby Atmos Spatial</span>
                     </div>
                   </div>
                 </div>
