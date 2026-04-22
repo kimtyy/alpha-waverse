@@ -70,6 +70,19 @@ export default function AlphaWaverseEngine() {
   const [likedTracks, setLikedTracks] = useState<string[]>([]);
   const [ownedAssets, setOwnedAssets] = useState<string[]>(['hwb-vol-1', 'haerin-demo-1']);
 
+  // Data Persistence: Load from LocalStorage
+  useEffect(() => {
+    const savedLikes = localStorage.getItem('alpha_waverse_likes');
+    if (savedLikes) {
+      setLikedTracks(JSON.parse(savedLikes));
+    }
+  }, []);
+
+  // Data Persistence: Save to LocalStorage
+  useEffect(() => {
+    localStorage.setItem('alpha_waverse_likes', JSON.stringify(likedTracks));
+  }, [likedTracks]);
+
   // Economy Stats Simulation
   const [minedShares, setMinedShares] = useState(124.5931);
   const [hashPower, setHashPower] = useState(82.9);
