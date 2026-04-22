@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward,
-  Trash2, Loader2, Plus, Check, FileText, Mic2
+  Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
 
@@ -36,7 +36,12 @@ export default function AlphaWaverseEngine() {
       uploadSuccess: "Asset Registered!",
       formatHint: "Supports WAV, MP3, MP4 (Video)",
       score: "View Score",
-      mr: "MR Mode"
+      mr: "MR Mode",
+      visionTitle: "Economic Vision",
+      visionSubtitle: "Sovereign Asset & Triple Income Model",
+      bmStream1: "Ad Revenue Share",
+      bmStream2: "Asset Direct Sales",
+      bmStream3: "P2P Node Mining"
     },
     KR: {
       wealth: "주권적 자산",
@@ -60,7 +65,12 @@ export default function AlphaWaverseEngine() {
       uploadSuccess: "자산 등록 완료!",
       formatHint: "WAV, MP3, MP4(영상) 포맷 지원",
       score: "악보 보기",
-      mr: "MR 모드"
+      mr: "MR 모드",
+      visionTitle: "경제 비전 리포트",
+      visionSubtitle: "주권적 자산 및 3대 수익 모델",
+      bmStream1: "광고 수익 공유",
+      bmStream2: "에셋 직거래 수익",
+      bmStream3: "P2P 노드 채굴 보상"
     }
   }[lang];
 
@@ -83,6 +93,7 @@ export default function AlphaWaverseEngine() {
   const [likedTracks, setLikedTracks] = useState<string[]>([]);
   const [ownedAssets, setOwnedAssets] = useState<string[]>(['hwb-vol-1', 'haerin-demo-1']);
   const [isUploading, setIsUploading] = useState(false);
+  const [showVision, setShowVision] = useState(false);
 
   // Data Persistence: Load from LocalStorage
   useEffect(() => {
@@ -456,6 +467,24 @@ export default function AlphaWaverseEngine() {
                   <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 3 }} className="absolute -inset-4 bg-primary/5 blur-2xl rounded-full" />
                 </div>
                 <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.studio}</h2>
+                
+                {/* VISION PROCLAMATION CARD */}
+                <button 
+                  onClick={() => setShowVision(true)}
+                  className="w-full max-w-xs premium-glass p-4 rounded-2xl border border-primary/20 bg-primary/5 flex items-center justify-between group hover:border-primary transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary text-black rounded-lg">
+                      <TrendingUp size={16} />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[10px] font-black uppercase text-primary tracking-widest">{T.visionTitle}</p>
+                      <p className="text-[7px] font-bold opacity-40 uppercase">{T.visionSubtitle}</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-primary group-hover:translate-x-1 transition-transform" />
+                </button>
+
                 <div className="flex flex-col items-center gap-3">
                   <div className="flex items-center gap-3">
                     <button 
@@ -590,6 +619,64 @@ export default function AlphaWaverseEngine() {
                     <SkipForward size={20} />
                   </button>
                 </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ECONOMIC VISION MODAL */}
+      <AnimatePresence>
+        {showVision && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-6"
+          >
+            <div className="w-full max-w-xl flex flex-col gap-8">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <h3 className="text-3xl font-black tracking-tighter text-primary uppercase">{T.visionTitle}</h3>
+                  <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">{T.visionSubtitle}</p>
+                </div>
+                <button onClick={() => setShowVision(false)} className="p-2 bg-white/5 rounded-full text-white/40 hover:text-white">
+                  <Plus className="rotate-45" size={24} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {[
+                  { icon: ShieldCheck, title: T.bmStream1, desc: "YouTube style ad-sharing but with 90% payout to creators." },
+                  { icon: Coins, title: T.bmStream2, desc: "Direct sales of Scores, MRs, and Masters without middlemen." },
+                  { icon: Zap, title: T.bmStream3, desc: "Automatic rewards for providing your device as a P2P node." }
+                ].map((item, idx) => (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    key={idx} 
+                    className="premium-glass p-6 rounded-3xl border border-white/5 flex items-start gap-5"
+                  >
+                    <div className="p-3 bg-white/5 rounded-2xl text-primary">
+                      <item.icon size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-lg uppercase tracking-tight mb-1">{item.title}</h4>
+                      <p className="text-xs font-medium opacity-40 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="premium-glass p-6 rounded-3xl border border-primary/30 bg-primary/5">
+                <div className="flex items-center gap-3 mb-3">
+                  <ShieldCheck size={20} className="text-primary" />
+                  <h4 className="text-sm font-black uppercase tracking-widest text-primary">BM Patent Status</h4>
+                </div>
+                <p className="text-[10px] font-medium leading-relaxed opacity-60">
+                  Current System: [P2P Distributed AI-Human Hybrid Sound Asset Management & Global ISRC Proxy Engine] is under strategic internal documentation for Business Model Patent application. Your creative assets are protected by our sovereign node infrastructure.
+                </p>
               </div>
             </div>
           </motion.div>
