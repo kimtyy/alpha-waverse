@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward,
-  Trash2, Loader2, Plus, Check
+  Trash2, Loader2, Plus, Check, FileText
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
 
@@ -19,42 +19,46 @@ export default function AlphaWaverseEngine() {
       power: "Network Power",
       status: "Tunecore Hub Active",
       title: "ALPHA WAVERSE",
-      placeholder: "Discover the Sound Universe...",
+      placeholder: "Explore AI, Human & Hybrid Waves...",
       radar: "Radar",
       vault: "Vault",
       studio: "Studio",
-      discoveries: "Discoveries",
+      discoveries: "Universal Discoveries",
       reset: "Reset",
       playAllVault: "Play All Vault",
       playAllStudio: "Play My Studio",
       vaultEmpty: "Vault is Empty",
-      nodeCertified: "P2P Node Certified",
-      validating: "Validating Status...",
-      streaming: "Streaming via P2P",
-      uploadAsset: "Register New Asset",
-      uploading: "Encoding to P2P...",
-      uploadSuccess: "Asset Registered!"
+      nodeCertified: "Hybrid Node Certified",
+      validating: "Validating Master Asset...",
+      streaming: "P2P Multi-Format Streaming",
+      uploadAsset: "Register WAV / MP4 Asset",
+      uploading: "Encoding to Global Node...",
+      uploadSuccess: "Asset Registered!",
+      formatHint: "Supports WAV, MP3, MP4 (Video)",
+      score: "View Score"
     },
     KR: {
       wealth: "주권적 자산",
       power: "네트워크 파워",
       status: "툰코어 글로벌 활성",
       title: "ALPHA WAVERSE",
-      placeholder: "음악 우주를 탐험하세요...",
+      placeholder: "AI, 휴먼, 하이브리드 파동 탐험...",
       radar: "레이더",
       vault: "보관함",
       studio: "스튜디오",
-      discoveries: "검색 결과",
+      discoveries: "통합 검색 결과",
       reset: "초기화",
       playAllVault: "보관함 전체 재생",
       playAllStudio: "내 스튜디오 재생",
       vaultEmpty: "보관함이 비어있습니다",
-      nodeCertified: "P2P 노드 인증됨",
-      validating: "상태 검증 중...",
-      streaming: "P2P 스트리밍 중",
-      uploadAsset: "새 음원 자산 등록",
-      uploading: "P2P 네트워크 인코딩 중...",
-      uploadSuccess: "자산 등록 완료!"
+      nodeCertified: "하이브리드 노드 인증됨",
+      validating: "마스터 자산 검증 중...",
+      streaming: "P2P 통합 포맷 스트리밍",
+      uploadAsset: "WAV / MP4 자산 등록",
+      uploading: "글로벌 노드 인코딩 중...",
+      uploadSuccess: "자산 등록 완료!",
+      formatHint: "WAV, MP3, MP4(영상) 포맷 지원",
+      score: "악보 보기"
     }
   }[lang];
 
@@ -167,7 +171,8 @@ export default function AlphaWaverseEngine() {
       localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
       
       setIsUploading(false);
-    }, 2000);
+      alert(lang === 'KR' ? "자산 등록이 완료되었습니다. 글로벌 ISRC 발급 대행이 시작되었습니다!" : "Asset registered! Global ISRC proxy registration initiated.");
+    }, 3000);
   };
 
   const filteredResults = useMemo(() => {
@@ -276,27 +281,66 @@ export default function AlphaWaverseEngine() {
               exit={{ opacity: 0 }}
               className="w-full h-full flex flex-col items-center justify-center relative"
             >
-              {(!search || filteredResults.length === 0) && (
+              {!search && (
                 <motion.div 
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="flex flex-col items-center gap-8 md:gap-12 w-full mb-20 px-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="w-full flex flex-col gap-8"
                 >
-                  <h1 className="text-4xl md:text-7xl font-black tracking-[0.3em] uppercase bg-gradient-to-b from-white to-white/20 bg-clip-text text-transparent leading-none text-center pl-[0.3em]">
-                    {T.title}
-                  </h1>
-                  <div className="relative w-full max-w-2xl group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity" />
-                    <div className="relative flex items-center bg-white/[0.03] border-b border-white/10 focus-within:border-primary transition-all">
-                      <Search className="absolute left-4 text-white/20 group-focus-within:text-primary w-5 h-5 md:w-6 md:h-6" />
-                      <input 
-                        type="text" 
-                        autoFocus
-                        placeholder={T.placeholder} 
-                        className="w-full bg-transparent py-6 md:py-8 px-12 md:px-14 text-lg md:text-3xl font-medium focus:outline-none placeholder:text-white/5 tracking-tighter text-center"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="flex flex-col items-center gap-8 md:gap-12 w-full px-4"
+                  >
+                    <h1 className="text-4xl md:text-7xl font-black tracking-[0.3em] uppercase bg-gradient-to-b from-white to-white/20 bg-clip-text text-transparent leading-none text-center pl-[0.3em]">
+                      {T.title}
+                    </h1>
+                    <div className="relative w-full max-w-2xl group">
+                      <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity" />
+                      <div className="relative flex items-center bg-white/[0.03] border-b border-white/10 focus-within:border-primary transition-all">
+                        <Search className="absolute left-4 text-white/20 group-focus-within:text-primary w-5 h-5 md:w-6 md:h-6" />
+                        <input 
+                          type="text" 
+                          autoFocus
+                          placeholder={T.placeholder} 
+                          className="w-full bg-transparent py-6 md:py-8 px-12 md:px-14 text-lg md:text-3xl font-medium focus:outline-none placeholder:text-white/5 tracking-tighter text-center"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* PERSONALIZED RECOMMENDATIONS */}
+                  <div className="w-full space-y-4 px-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-3 bg-primary rounded-full" />
+                        <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">FOR YOU: DAILY WAVE</h2>
+                      </div>
+                      <span className="text-[8px] font-black uppercase text-primary animate-pulse">Personalized Live</span>
+                    </div>
+                    <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar no-scrollbar scroll-smooth">
+                      {WAVE_QUERY_DATA.slice(0, 5).map((item) => (
+                        <div 
+                          key={`rec-${item.id}`}
+                          onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.slice(0, 5)); setIsPlaying(true); }}
+                          className="min-w-[200px] md:min-w-[280px] premium-glass p-5 rounded-3xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden"
+                        >
+                          <div className="absolute top-0 right-0 p-3">
+                            <Activity size={12} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 mb-4 group-hover:scale-110 group-hover:bg-primary group-hover:text-black transition-all">
+                            <MusicIcon size={20} />
+                          </div>
+                          <h3 className="font-bold text-lg md:text-xl tracking-tight mb-1 truncate">{item.title}</h3>
+                          <div className="flex items-center gap-2 text-[8px] font-black uppercase opacity-30">
+                            <span className="text-primary">{item.category}</span>
+                            <span className="w-0.5 h-0.5 rounded-full bg-white" />
+                            <span>{item.isrc}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </motion.div>
@@ -410,21 +454,24 @@ export default function AlphaWaverseEngine() {
                   <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 3 }} className="absolute -inset-4 bg-primary/5 blur-2xl rounded-full" />
                 </div>
                 <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.studio}</h2>
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={() => playAll(ownedDisplayList as any)}
-                    className="flex items-center gap-2 bg-primary text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(var(--primary-rgb),0.3)]"
-                  >
-                    <Play size={12} fill="currentColor" /> {T.playAllStudio}
-                  </button>
-                  <button 
-                    onClick={handleUpload}
-                    disabled={isUploading}
-                    className="flex items-center gap-2 bg-white/5 border border-white/10 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-50"
-                  >
-                    {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                    {isUploading ? T.uploading : T.uploadAsset}
-                  </button>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => playAll(ownedDisplayList as any)}
+                      className="flex items-center gap-2 bg-primary text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(var(--primary-rgb),0.3)]"
+                    >
+                      <Play size={12} fill="currentColor" /> {T.playAllStudio}
+                    </button>
+                    <button 
+                      onClick={handleUpload}
+                      disabled={isUploading}
+                      className="flex items-center gap-2 bg-white/5 border border-white/10 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-50"
+                    >
+                      {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                      {isUploading ? T.uploading : T.uploadAsset}
+                    </button>
+                  </div>
+                  <p className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">{T.formatHint}</p>
                 </div>
               </div>
               
@@ -462,7 +509,10 @@ export default function AlphaWaverseEngine() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <div className="text-[8px] font-black px-2 py-1 bg-white/5 rounded border border-white/5 opacity-40">ISRC-PRO</div>
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="text-[7px] font-black px-2 py-0.5 bg-primary text-black rounded-full animate-pulse">ISRC PROXY</div>
+                        <div className="text-[6px] font-black opacity-30 uppercase tracking-tighter">Global Registry Pending</div>
+                      </div>
                       <Share2 size={20} className="text-white/20 hover:text-primary transition-colors" />
                     </div>
                   </div>
@@ -515,13 +565,22 @@ export default function AlphaWaverseEngine() {
                   <span>{T.streaming}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 text-white hover:text-primary">
-                  {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => alert(lang === 'KR' ? 'AI 악보 생성 및 채보 엔진이 가동 중입니다...' : 'AI Score Generation & Transcription Engine in progress...')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all group border border-white/5 hover:border-primary/30"
+                >
+                  <FileText size={12} className="group-hover:text-primary transition-colors" />
+                  <span className="text-[8px] font-black uppercase tracking-wider">{T.score}</span>
                 </button>
-                <button onClick={handleTrackEnd} className="p-2 text-white/40 hover:text-white">
-                  <SkipForward size={20} />
-                </button>
+                <div className="flex items-center gap-2 border-l border-white/10 pl-3 ml-1">
+                  <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 text-white hover:text-primary transition-colors">
+                    {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+                  </button>
+                  <button onClick={handleTrackEnd} className="p-2 text-white/40 hover:text-white transition-colors">
+                    <SkipForward size={20} />
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
