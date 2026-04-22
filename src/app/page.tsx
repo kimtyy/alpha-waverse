@@ -9,6 +9,53 @@ import {
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
 
 export default function AlphaWaverseEngine() {
+  // Localization Engine
+  const [lang, setLang] = useState<'EN' | 'KR'>('EN');
+  
+  const T = {
+    EN: {
+      wealth: "Sovereign Wealth",
+      power: "Network Power",
+      status: "Tunecore Hub Active",
+      title: "ALPHA WAVERSE",
+      placeholder: "Discover the Sound Universe...",
+      radar: "Radar",
+      vault: "Vault",
+      studio: "Studio",
+      discoveries: "Discoveries",
+      reset: "Reset",
+      playAllVault: "Play All Vault",
+      playAllStudio: "Play My Studio",
+      vaultEmpty: "Vault is Empty",
+      nodeCertified: "P2P Node Certified",
+      validating: "Validating Status...",
+      streaming: "Streaming via P2P"
+    },
+    KR: {
+      wealth: "주권적 자산",
+      power: "네트워크 파워",
+      status: "툰코어 글로벌 활성",
+      title: "ALPHA WAVERSE",
+      placeholder: "음악 우주를 탐험하세요...",
+      radar: "레이더",
+      vault: "보관함",
+      studio: "스튜디오",
+      discoveries: "검색 결과",
+      reset: "초기화",
+      playAllVault: "보관함 전체 재생",
+      playAllStudio: "내 스튜디오 재생",
+      vaultEmpty: "보관함이 비어있습니다",
+      nodeCertified: "P2P 노드 인증됨",
+      validating: "상태 검증 중...",
+      streaming: "P2P 스트리밍 중"
+    }
+  }[lang];
+
+  useEffect(() => {
+    const userLang = navigator.language.startsWith('ko') ? 'KR' : 'EN';
+    setLang(userLang);
+  }, []);
+
   // Navigation & Search State
   const [view, setView] = useState<'RADAR' | 'LIKES' | 'NODE'>('RADAR');
   const [search, setSearch] = useState('');
@@ -98,7 +145,7 @@ export default function AlphaWaverseEngine() {
       <div className="w-full z-50 px-6 pt-6 md:pt-10 flex flex-col items-center">
         <div className="w-full max-w-5xl flex justify-between items-center premium-glass px-5 py-3 rounded-2xl border border-white/5 backdrop-blur-xl shadow-2xl">
           <div className="flex flex-col items-start">
-            <span className="text-[7px] font-black uppercase tracking-[0.2em] text-primary/60">Sovereign Wealth</span>
+            <span className="text-[7px] font-black uppercase tracking-[0.2em] text-primary/60">{T.wealth}</span>
             <div className="flex items-baseline gap-1">
               <span className="text-sm md:text-lg font-black tabular-nums">{minedShares.toFixed(4)}</span>
               <span className="text-[8px] font-bold text-primary">α</span>
@@ -107,11 +154,11 @@ export default function AlphaWaverseEngine() {
           
           <div className="flex items-center gap-2 opacity-30">
             <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[6px] font-black uppercase tracking-[0.3em]">Tunecore Hub Active</span>
+            <span className="text-[6px] font-black uppercase tracking-[0.3em]">{T.status}</span>
           </div>
 
           <div className="flex flex-col items-end text-right">
-            <span className="text-[7px] font-black uppercase tracking-[0.2em] text-secondary/60">Network Power</span>
+            <span className="text-[7px] font-black uppercase tracking-[0.2em] text-secondary/60">{T.power}</span>
             <div className="flex items-center gap-1.5">
               <span className="text-sm md:text-lg font-black tabular-nums">{hashPower.toFixed(1)}</span>
               <Zap size={10} className="text-secondary" />
@@ -139,7 +186,7 @@ export default function AlphaWaverseEngine() {
                   className="flex flex-col items-center gap-8 md:gap-12 w-full mb-20 px-4"
                 >
                   <h1 className="text-4xl md:text-7xl font-black tracking-[0.3em] uppercase bg-gradient-to-b from-white to-white/20 bg-clip-text text-transparent leading-none text-center pl-[0.3em]">
-                    ALPHA WAVERSE
+                    {T.title}
                   </h1>
                   <div className="relative w-full max-w-2xl group">
                     <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity" />
@@ -148,7 +195,7 @@ export default function AlphaWaverseEngine() {
                       <input 
                         type="text" 
                         autoFocus
-                        placeholder="Discover the Sound Universe..." 
+                        placeholder={T.placeholder} 
                         className="w-full bg-transparent py-6 md:py-8 px-12 md:px-14 text-lg md:text-3xl font-medium focus:outline-none placeholder:text-white/5 tracking-tighter text-center"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -165,8 +212,8 @@ export default function AlphaWaverseEngine() {
                   className="w-full h-full flex flex-col pt-10"
                 >
                   <div className="flex justify-between items-center mb-6 px-2">
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Discoveries</h2>
-                    <button onClick={() => setSearch('')} className="text-[8px] font-black uppercase text-white/40 hover:text-white">Reset</button>
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">{T.discoveries}</h2>
+                    <button onClick={() => setSearch('')} className="text-[8px] font-black uppercase text-white/40 hover:text-white">{T.reset}</button>
                   </div>
                   <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 pb-48">
                     {filteredResults.map((result) => (
@@ -209,12 +256,12 @@ export default function AlphaWaverseEngine() {
             >
               <div className="flex flex-col items-center gap-4 mb-10 text-center">
                 <Heart size={32} className="text-red-500" />
-                <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">My Vault</h2>
+                <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.vault}</h2>
                 <button 
                   onClick={() => playAll(WAVE_QUERY_DATA.filter(item => likedTracks.includes(item.id)))}
                   className="flex items-center gap-2 bg-red-500 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform"
                 >
-                  <Play size={12} fill="currentColor" /> Play All Vault
+                  <Play size={12} fill="currentColor" /> {T.playAllVault}
                 </button>
               </div>
               
@@ -233,6 +280,12 @@ export default function AlphaWaverseEngine() {
                     <button onClick={(e) => toggleLike(item.id, e)} className="text-red-500"><Heart size={18} fill="currentColor" /></button>
                   </div>
                 ))}
+                {likedTracks.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center opacity-20 gap-4">
+                    <Heart size={40} strokeWidth={1} />
+                    <p className="text-xs font-black uppercase tracking-widest">{T.vaultEmpty}</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -247,12 +300,12 @@ export default function AlphaWaverseEngine() {
             >
               <div className="flex flex-col items-center gap-4 mb-10 text-center">
                 <Cpu size={32} className="text-primary" />
-                <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">My Studio</h2>
+                <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.studio}</h2>
                 <button 
                   onClick={() => playAll(WAVE_QUERY_DATA.filter(item => ownedAssets.includes(item.id)))}
                   className="flex items-center gap-2 bg-primary text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform"
                 >
-                  <Play size={12} fill="currentColor" /> Play My Studio
+                  <Play size={12} fill="currentColor" /> {T.playAllStudio}
                 </button>
               </div>
               
@@ -268,7 +321,7 @@ export default function AlphaWaverseEngine() {
                         <div className="flex items-center gap-2 opacity-30 text-[10px] font-black uppercase">
                           <span>{item.status}</span>
                           <span className="w-1 h-1 rounded-full bg-white" />
-                          <span>P2P Certified</span>
+                          <span>{T.nodeCertified}</span>
                         </div>
                       </div>
                     </div>
@@ -285,9 +338,9 @@ export default function AlphaWaverseEngine() {
       <div className="fixed bottom-0 left-0 right-0 z-[110] px-6 pb-6 md:pb-10 pointer-events-none">
         <div className="max-w-md mx-auto premium-glass p-2 rounded-full border border-white/10 shadow-2xl pointer-events-auto flex justify-between items-center bg-black/90 backdrop-blur-3xl">
           {[
-            { id: 'LIKES', icon: Heart, label: 'Vault' },
-            { id: 'RADAR', icon: Search, label: 'Radar' },
-            { id: 'NODE', icon: User, label: 'Studio' }
+            { id: 'LIKES', icon: Heart, label: T.vault },
+            { id: 'RADAR', icon: Search, label: T.radar },
+            { id: 'NODE', icon: User, label: T.studio }
           ].map((nav) => (
             <button 
               key={nav.id}
@@ -320,7 +373,7 @@ export default function AlphaWaverseEngine() {
                 <div className="flex items-center gap-2 text-[7px] font-black opacity-50 uppercase tracking-widest">
                   <span className="text-primary">{activeTrack.isrc}</span>
                   <span className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
-                  <span>Streaming via P2P</span>
+                  <span>{T.streaming}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
