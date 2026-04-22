@@ -153,14 +153,21 @@ export default function AlphaWaverseEngine() {
 
   // Mock Upload Function
   const handleUpload = () => {
-    const newId = `user-asset-${Date.now()}`;
-    // Add to owned assets
-    setOwnedAssets(prev => [newId, ...prev]);
-    // In a real app, we'd add to the global data, but here we simulate it
-    // by injecting it into WAVE_QUERY_DATA if it were mutable, 
-    // or we can just show a success toast.
+    const title = window.prompt(lang === 'KR' ? "등록할 음원의 이름을 입력하세요:" : "Enter the title of the asset to register:");
+    if (!title) return;
+
     setIsUploading(true);
-    setTimeout(() => setIsUploading(false), 2000);
+    
+    setTimeout(() => {
+      const newId = `user-asset-${Date.now()}`;
+      setOwnedAssets(prev => [newId, ...prev]);
+      
+      const updatedTitles = { ...customTitles, [newId]: title };
+      setCustomTitles(updatedTitles);
+      localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
+      
+      setIsUploading(false);
+    }, 2000);
   };
 
   const filteredResults = useMemo(() => {
@@ -189,6 +196,30 @@ export default function AlphaWaverseEngine() {
     e.stopPropagation();
     setLikedTracks(prev => prev.filter(t => t !== id));
   };
+
+  // Load custom titles for uploaded assets
+  const [customTitles, setCustomTitles] = useState<Record<string, string>>({});
+  
+  useEffect(() => {
+    const saved = localStorage.getItem('alpha_waverse_custom_titles');
+    if (saved) setCustomTitles(JSON.parse(saved));
+  }, []);
+
+  const ownedDisplayList = useMemo(() => {
+    return ownedAssets.map(id => {
+      const original = WAVE_QUERY_DATA.find(t => t.id === id);
+      if (original) return original;
+      return {
+        id,
+        title: customTitles[id] || "New Sonic Asset",
+        type: 'Music' as const,
+        category: 'User Asset',
+        isrc: `ISRC-USR-${id.slice(-4)}`,
+        status: 'Certified',
+        url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-1-1.mp3' // Default mock audio
+      };
+    });
+  }, [ownedAssets, customTitles]);
 
   return (
     <main className="h-[100dvh] w-full bg-black text-white selection:bg-primary/30 flex flex-col items-center relative overflow-hidden font-sans">
@@ -381,7 +412,7 @@ export default function AlphaWaverseEngine() {
                 <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.studio}</h2>
                 <div className="flex items-center gap-3">
                   <button 
-                    onClick={() => playAll(WAVE_QUERY_DATA.filter(item => ownedAssets.includes(item.id)))}
+                    onClick={() => playAll(ownedDisplayList as any)}
                     className="flex items-center gap-2 bg-primary text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(var(--primary-rgb),0.3)]"
                   >
                     <Play size={12} fill="currentColor" /> {T.playAllStudio}
@@ -405,16 +436,16 @@ export default function AlphaWaverseEngine() {
                         <Loader2 size={24} className="animate-spin" />
                       </div>
                       <div>
-                        <p className="text-base md:text-xl font-black tracking-tight opacity-50">New Sonic Asset...</p>
+                        <p className="text-base md:text-xl font-black tracking-tight opacity-50">Encoding Asset...</p>
                         <p className="text-[10px] font-black uppercase text-primary">{T.uploading}</p>
                       </div>
                     </div>
                   </motion.div>
                 )}
-                {WAVE_QUERY_DATA.filter(item => ownedAssets.includes(item.id)).map(item => (
+                {ownedDisplayList.map(item => (
                   <div 
                     key={item.id} 
-                    onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.filter(t => ownedAssets.includes(t.id))); setIsPlaying(true); }} 
+                    onClick={() => { setActiveTrack(item as any); setPlaylist(ownedDisplayList as any); setIsPlaying(true); }} 
                     className={`premium-glass p-6 rounded-3xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-primary/5 group'}`}
                   >
                     <div className="flex items-center gap-5">
@@ -424,7 +455,7 @@ export default function AlphaWaverseEngine() {
                       <div>
                         <p className="text-base md:text-xl font-black tracking-tight">{item.title}</p>
                         <div className="flex items-center gap-2 opacity-30 text-[10px] font-black uppercase tracking-widest">
-                          <span>{item.status}</span>
+                          <span>{'status' in item ? item.status : 'Certified'}</span>
                           <span className="w-1 h-1 rounded-full bg-white" />
                           <span className="text-primary">{T.nodeCertified}</span>
                         </div>
