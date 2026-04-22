@@ -75,8 +75,10 @@ export default function AlphaWaverseEngine() {
   }[lang];
 
   useEffect(() => {
-    const userLang = navigator.language.startsWith('ko') ? 'KR' : 'EN';
-    setLang(userLang);
+    if (typeof window !== 'undefined') {
+      const userLang = navigator.language.startsWith('ko') ? 'KR' : 'EN';
+      setLang(userLang);
+    }
   }, []);
 
   // Navigation & Search State
