@@ -110,11 +110,11 @@ export default function AlphaWaverseEngine() {
 
   // Global Sync & Legacy Integration
   const [isSyncing, setIsSyncing] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [importIsrc, setImportIsrc] = useState('');
   const [legacyAssetIds, setLegacyAssetIds] = useState<string[]>([]);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
+  const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
 
   // DistroKid-style Registration Modal State
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -338,6 +338,23 @@ export default function AlphaWaverseEngine() {
     }
     
     e.target.value = '';
+  };
+
+  const toggleSelection = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedTrackIds(prev => 
+      prev.includes(id) ? prev.filter(tid => tid !== id) : [...prev, id]
+    );
+  };
+
+  const playSelected = (pool: any[]) => {
+    const tracksToPlay = pool.filter(t => selectedTrackIds.includes(t.id));
+    if (tracksToPlay.length > 0) {
+      setActiveTrack(tracksToPlay[0]);
+      setPlaylist(tracksToPlay);
+      setIsPlaying(true);
+      setSelectedTrackIds([]);
+    }
   };
 
   const handleBatchUpload = async () => {
@@ -828,16 +845,22 @@ export default function AlphaWaverseEngine() {
                     className={`premium-glass p-5 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer transition-all ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-red-500/5 group'}`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${activeTrack?.id === item.id ? 'bg-red-500 text-white' : 'bg-red-500/10 text-red-500 group-hover:scale-105'}`}>
-                        {activeTrack?.id === item.id && isPlaying ? <Activity size={20} className="animate-pulse" /> : <Play size={18} fill="currentColor" />}
+                      <div 
+                        onClick={(e) => toggleSelection(item.id, e)}
+                        className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${selectedTrackIds.includes(item.id) ? 'bg-red-500 border-red-500' : 'border-white/20 hover:border-red-500'}`}
+                      >
+                        {selectedTrackIds.includes(item.id) && <Check size={14} className="text-white" />}
+                      </div>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${activeTrack?.id === item.id ? 'bg-red-500 text-white' : 'bg-red-500/10 text-red-500 group-hover:scale-105'}`}>
+                        {activeTrack?.id === item.id && isPlaying ? <Activity size={18} className="animate-pulse" /> : <Play size={16} fill="currentColor" />}
                       </div>
                       <div>
-                        <p className="font-bold text-base md:text-lg tracking-tight">{item.title}</p>
-                        <p className="text-[8px] font-black opacity-30 uppercase tracking-widest">{item.isrc}</p>
+                        <p className="font-bold text-sm md:text-base tracking-tight">{item.title}</p>
+                        <p className="text-[7px] font-black opacity-30 uppercase tracking-widest">{item.isrc}</p>
                       </div>
                     </div>
                     <button onClick={(e) => removeFromVault(item.id, e)} className="text-white/20 hover:text-red-500 transition-colors p-2">
-                      <Trash2 size={18} />
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 ))}
@@ -848,6 +871,26 @@ export default function AlphaWaverseEngine() {
                   </div>
                 )}
               </div>
+
+              {/* VAULT SELECTION BAR */}
+              <AnimatePresence>
+                {selectedTrackIds.length > 0 && view === 'LIKES' && (
+                  <motion.div 
+                    initial={{ y: 50, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 50, opacity: 0 }}
+                    className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[120] w-[90%] max-w-sm bg-red-600 text-white rounded-2xl p-4 shadow-2xl flex items-center justify-between"
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-widest">{selectedTrackIds.length} {lang === 'KR' ? "곡 선택됨" : "Selected"}</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSelectedTrackIds([])} className="px-4 py-2 bg-black/20 rounded-lg text-[10px] font-black uppercase">Cancel</button>
+                      <button onClick={() => playSelected(WAVE_QUERY_DATA)} className="px-6 py-2 bg-white text-red-600 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 shadow-xl">
+                        <Play size={10} fill="currentColor" /> Play Selected
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
@@ -907,15 +950,9 @@ export default function AlphaWaverseEngine() {
                   />
                   <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
                     <button 
-                      onClick={() => playAll(ownedDisplayList as any)}
-                      className="col-span-2 flex items-center justify-center gap-3 bg-gradient-to-r from-primary to-secondary text-black px-4 py-5 rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] mb-2"
-                    >
-                      <Play size={16} fill="currentColor" /> {T.playAllStudio}
-                    </button>
-                    <button 
                       onClick={() => singleInputRef.current?.click()}
                       disabled={isUploading}
-                      className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-50"
+                      className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-50"
                     >
                       {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                       {lang === 'KR' ? "자산 등록" : "Add Asset"}
@@ -923,21 +960,21 @@ export default function AlphaWaverseEngine() {
                     <button 
                       onClick={() => batchInputRef.current?.click()}
                       disabled={isUploading}
-                      className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-primary px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 transition-all disabled:opacity-50"
+                      className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-primary px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 transition-all disabled:opacity-50"
                     >
                       {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Layers size={12} />}
                       {lang === 'KR' ? "Pro 대량 등록" : "Pro Batch Import"}
                     </button>
                     <button 
                       onClick={() => setShowImportModal(true)}
-                      className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                      className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
                     >
                       <Globe size={12} />
                       {lang === 'KR' ? "레거시 가져오기" : "Import Legacy"}
                     </button>
                     <button 
                       onClick={clearStudio}
-                      className="flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all"
+                      className="col-span-1 flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all"
                     >
                       <Trash2 size={12} />
                       {lang === 'KR' ? "초기화" : "Clear"}
@@ -965,56 +1002,52 @@ export default function AlphaWaverseEngine() {
                   <div key={item.id} className="flex flex-col gap-2">
                     <div 
                       onClick={() => { setActiveTrack(item as any); setPlaylist(ownedDisplayList as any); setIsPlaying(true); }} 
-                      className={`premium-glass p-6 rounded-3xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-primary/5 group'}`}
+                      className={`premium-glass p-5 rounded-3xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-primary/5 group'}`}
                     >
-                      <div className="flex items-center gap-5">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${activeTrack?.id === item.id ? 'bg-primary text-black shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]' : 'bg-primary/10 text-primary group-hover:scale-105'}`}>
+                      <div className="flex items-center gap-4">
+                        <div 
+                          onClick={(e) => toggleSelection(item.id, e)}
+                          className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${selectedTrackIds.includes(item.id) ? 'bg-primary border-primary' : 'border-white/20 hover:border-primary'}`}
+                        >
+                          {selectedTrackIds.includes(item.id) && <Check size={14} className="text-black" />}
+                        </div>
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeTrack?.id === item.id ? 'bg-primary text-black shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]' : 'bg-primary/10 text-primary group-hover:scale-105'}`}>
                           {activeTrack?.id === item.id && isPlaying ? (
-                            <Activity size={24} className="animate-pulse" />
+                            <Activity size={20} className="animate-pulse" />
                           ) : item.type === 'Video' ? (
                             <div className="relative">
-                              <Video size={24} />
-                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                              <Video size={20} />
+                              <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
                             </div>
                           ) : (
-                            <CloudUpload size={24} />
+                            <CloudUpload size={20} />
                           )}
                         </div>
                         <div>
                           {item.title.includes('/') ? (
                             <>
-                              <p className="text-base md:text-xl font-black tracking-tight">{item.title.split('/')[0].trim()}</p>
-                              <p className="text-[9px] font-bold text-primary/60 uppercase tracking-widest -mt-1">
+                              <p className="text-sm md:text-base font-black tracking-tight">{item.title.split('/')[0].trim()}</p>
+                              <p className="text-[8px] font-bold text-primary/60 uppercase tracking-widest -mt-0.5">
                                 {item.title.split('/').slice(1).join(' x ')}
                               </p>
                             </>
                           ) : (
-                            <p className="text-base md:text-xl font-black tracking-tight">{item.title}</p>
+                            <p className="text-sm md:text-base font-black tracking-tight">{item.title}</p>
                           )}
-                          <div className="flex items-center gap-2 opacity-30 text-[10px] font-black uppercase tracking-widest mt-1">
+                          <div className="flex items-center gap-1.5 opacity-30 text-[8px] font-black uppercase tracking-widest mt-0.5">
                             <span className="text-primary">{item.type}</span>
-                            <span className="w-1 h-1 rounded-full bg-white" />
-                            <span>{'status' in item ? item.status : 'Certified'}</span>
-                            <span className="w-1 h-1 rounded-full bg-white" />
-                            <span className="text-primary">{legacyAssetIds.includes(item.id) ? "LEGACY" : T.nodeCertified}</span>
+                            <span className="w-0.5 h-0.5 rounded-full bg-white" />
+                            <span className="text-primary">{customProducers[item.id] || "OWNER"}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex flex-col items-end gap-1">
-                          <div className={`text-[7px] font-black px-2 py-0.5 rounded-full animate-pulse ${legacyAssetIds.includes(item.id) ? 'bg-secondary text-white' : 'bg-primary text-black'}`}>
-                            {legacyAssetIds.includes(item.id) ? "CROSS-PLATFORM" : "SOVEREIGN"}
-                          </div>
-                          <div className="text-[6px] font-black opacity-30 uppercase tracking-tighter">
-                            {legacyAssetIds.includes(item.id) ? "External Registry Linked" : "Global Registry Pending"}
-                          </div>
-                        </div>
-                        <Share2 size={20} className="text-white/20 hover:text-primary transition-colors" />
+                      <div className="flex items-center gap-3">
+                        <Share2 size={16} className="text-white/20 hover:text-primary transition-colors" />
                         <button 
                           onClick={(e) => deleteAsset(item.id, e)}
                           className="text-white/10 hover:text-red-500 transition-colors p-2"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
@@ -1064,8 +1097,33 @@ export default function AlphaWaverseEngine() {
                       </div>
                     )}
                   </div>
-                ))}
+                {ownedDisplayList.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center opacity-20 gap-4 mt-20">
+                    <MusicIcon size={40} strokeWidth={1} />
+                    <p className="text-xs font-black uppercase tracking-widest">{lang === 'KR' ? "등록된 자산이 없습니다." : "No Assets in Studio"}</p>
+                  </div>
+                )}
               </div>
+
+              {/* STUDIO SELECTION BAR */}
+              <AnimatePresence>
+                {selectedTrackIds.length > 0 && view === 'NODE' && (
+                  <motion.div 
+                    initial={{ y: 50, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 50, opacity: 0 }}
+                    className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[120] w-[90%] max-w-sm bg-primary text-black rounded-2xl p-4 shadow-[0_20px_50px_rgba(var(--primary-rgb),0.4)] flex items-center justify-between"
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-widest">{selectedTrackIds.length} {lang === 'KR' ? "곡 선택됨" : "Selected"}</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSelectedTrackIds([])} className="px-4 py-2 bg-black/10 rounded-lg text-[10px] font-black uppercase">Cancel</button>
+                      <button onClick={() => playSelected(ownedDisplayList)} className="px-6 py-2 bg-black text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-2 shadow-xl">
+                        <Play size={10} fill="currentColor" /> Play Selected
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
         </AnimatePresence>
