@@ -295,7 +295,7 @@ export default function AlphaWaverseEngine() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const title = window.prompt(lang === 'KR' ? "자산의 이름을 입력하세요:" : "Enter the title for this asset:", file.name.split('.')[0]);
+    const title = window.prompt(lang === 'KR' ? "음악 제목과 아티스트명을 입력하세요 (예: 제목 - 가수):" : "Enter Title & Artist (e.g., Song - Artist):", file.name.split('.')[0]);
     if (!title) return;
 
     setIsUploading(true);
@@ -1259,16 +1259,28 @@ export default function AlphaWaverseEngine() {
 
             <div className="mt-8 flex justify-between items-center px-4">
               <div className="flex items-center gap-6 text-white/40">
-                <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => alert(lang === 'KR' ? "글로벌 유통 엔진 가동: 전 세계 120개 플랫폼으로 배포를 시작합니다." : "Global Distribution Engine: Starting deployment to 120+ platforms.")}
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
                   <Share2 size={16} />
                   <span className="text-[10px] font-black uppercase">Distribute</span>
-                </div>
-                <div className="flex items-center gap-2">
+                </button>
+                <button 
+                  onClick={() => alert(lang === 'KR' ? "실시간 자산 통계: 노드 전파율 및 예상 수익 데이터를 분석 중입니다." : "Real-time Stats: Analyzing node propagation and projected earnings.")}
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
                   <TrendingUp size={16} />
                   <span className="text-[10px] font-black uppercase">Stats</span>
-                </div>
+                </button>
               </div>
-              <button className="bg-primary text-black px-10 py-4 rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)]">
+              <button 
+                onClick={() => {
+                  alert(lang === 'KR' ? "🎉 마스터 NFT 민팅 완료! 부장님의 주권적 자산이 블록체인에 공식 등록되었습니다." : "🎉 Master NFT Minted! Your sovereign asset is now officially registered on-chain.");
+                  setShowVideoPlayer(null); // Close the player as the final step
+                }}
+                className="bg-primary text-black px-10 py-4 rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)]"
+              >
                 Mint as Master NFT
               </button>
             </div>
