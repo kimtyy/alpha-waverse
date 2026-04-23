@@ -529,40 +529,48 @@ export default function AlphaWaverseEngine() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="w-full h-full flex flex-col items-center justify-center relative"
+              className="w-full h-full flex flex-col items-center pt-10 relative overflow-hidden"
             >
-              {!search && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="w-full flex flex-col gap-8"
-                >
-                  <motion.div 
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="flex flex-col items-center gap-8 md:gap-12 w-full px-4"
+              {/* PERSISTENT SEARCH HEADER */}
+              <motion.div 
+                layout
+                className={`w-full flex flex-col items-center gap-8 md:gap-12 transition-all duration-500 ${search ? 'mb-6' : 'mt-[10vh] mb-12'}`}
+              >
+                {!search && (
+                  <motion.h1 
+                    layout
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-4xl md:text-7xl font-black tracking-[0.3em] uppercase bg-gradient-to-b from-white to-white/20 bg-clip-text text-transparent leading-none text-center pl-[0.3em]"
                   >
-                    <h1 className="text-4xl md:text-7xl font-black tracking-[0.3em] uppercase bg-gradient-to-b from-white to-white/20 bg-clip-text text-transparent leading-none text-center pl-[0.3em]">
-                      {T.title}
-                    </h1>
-                    <div className="relative w-full max-w-2xl group">
-                      <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity" />
-                      <div className="relative flex items-center bg-white/[0.03] border-b border-white/10 focus-within:border-primary transition-all">
-                        <Search className="absolute left-4 text-white/20 group-focus-within:text-primary w-5 h-5 md:w-6 md:h-6" />
-                        <input 
-                          type="text" 
-                          autoFocus
-                          placeholder={T.placeholder} 
-                          className="w-full bg-transparent py-6 md:py-8 px-12 md:px-14 text-lg md:text-3xl font-medium focus:outline-none placeholder:text-white/5 tracking-tighter text-center"
-                          value={search}
-                          onChange={(e) => setSearch(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
+                    {T.title}
+                  </motion.h1>
+                )}
+                
+                <div className="relative w-full max-w-2xl group px-4">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity" />
+                  <div className="relative flex items-center bg-white/[0.03] border-b border-white/10 focus-within:border-primary transition-all">
+                    <Search className="absolute left-4 text-white/20 group-focus-within:text-primary w-5 h-5 md:w-6 md:h-6" />
+                    <input 
+                      type="text" 
+                      placeholder={T.placeholder} 
+                      className="w-full bg-transparent py-4 md:py-8 px-12 md:px-14 text-lg md:text-3xl font-medium focus:outline-none placeholder:text-white/5 tracking-tighter text-center"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </motion.div>
 
-                  {/* PERSONALIZED RECOMMENDATIONS */}
-                  <div className="w-full space-y-4 px-2">
+              <AnimatePresence>
+                {!search ? (
+                  <motion.div 
+                    key="recommendations"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="w-full space-y-4 px-2 overflow-y-auto custom-scrollbar"
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-1 h-3 bg-primary rounded-full" />
@@ -570,7 +578,7 @@ export default function AlphaWaverseEngine() {
                       </div>
                       <span className="text-[8px] font-black uppercase text-primary animate-pulse">Personalized Live</span>
                     </div>
-                    <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar no-scrollbar scroll-smooth">
+                    <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar scroll-smooth">
                       {WAVE_QUERY_DATA.slice(0, 5).map((item) => (
                         <div 
                           key={`rec-${item.id}`}
@@ -592,48 +600,57 @@ export default function AlphaWaverseEngine() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {search && filteredResults.length > 0 && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="w-full h-full flex flex-col pt-10"
-                >
-                  <div className="flex justify-between items-center mb-6 px-2">
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">{T.discoveries}</h2>
-                    <button onClick={() => setSearch('')} className="text-[8px] font-black uppercase text-white/40 hover:text-white">{T.reset}</button>
-                  </div>
-                  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 pb-48">
-                    {filteredResults.map((result) => (
-                      <div 
-                        key={result.id}
-                        onClick={() => { setActiveTrack(result); setPlaylist(filteredResults); }}
-                        className={`premium-glass p-5 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer group transition-all ${activeTrack?.id === result.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5'}`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${activeTrack?.id === result.id ? 'bg-primary text-black' : 'bg-primary/10 text-primary group-hover:scale-105'}`}>
-                            {activeTrack?.id === result.id ? <Activity size={20} className="animate-pulse" /> : <MusicIcon size={20} />}
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-base md:text-xl tracking-tight">{result.title}</h3>
-                            <div className="flex items-center gap-2 text-[8px] font-black uppercase opacity-40">
-                              <span className="text-primary">{result.category}</span>
-                              <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                              <span>{result.isrc}</span>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="results"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="w-full flex-1 flex flex-col overflow-hidden"
+                  >
+                    <div className="flex justify-between items-center mb-6 px-2">
+                      <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">{T.discoveries}</h2>
+                      <button onClick={() => setSearch('')} className="text-[8px] font-black uppercase text-white/40 hover:text-white">{T.reset}</button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 pb-48">
+                      {filteredResults.length > 0 ? (
+                        filteredResults.map((result) => (
+                          <div 
+                            key={result.id}
+                            onClick={() => { setActiveTrack(result); setPlaylist(filteredResults); }}
+                            className={`premium-glass p-5 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer group transition-all ${activeTrack?.id === result.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5'}`}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${activeTrack?.id === result.id ? 'bg-primary text-black' : 'bg-primary/10 text-primary group-hover:scale-105'}`}>
+                                {activeTrack?.id === result.id ? <Activity size={20} className="animate-pulse" /> : <MusicIcon size={20} />}
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-base md:text-xl tracking-tight">{result.title}</h3>
+                                <div className="flex items-center gap-2 text-[8px] font-black uppercase opacity-40">
+                                  <span className="text-primary">{result.category}</span>
+                                  <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
+                                  <span>{result.isrc}</span>
+                                </div>
+                              </div>
                             </div>
+                            <button onClick={(e) => toggleLike(result.id, e)} className={`p-2 transition-all ${likedTracks.includes(result.id) ? 'text-red-500 scale-110' : 'text-white/10 hover:text-white'}`}>
+                              <Heart size={20} fill={likedTracks.includes(result.id) ? "currentColor" : "none"} />
+                            </button>
                           </div>
+                        ))
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-20 gap-4">
+                          <Search size={40} />
+                          <p className="text-[10px] font-black uppercase tracking-widest">No results for "{search}"</p>
                         </div>
-                        <button onClick={(e) => toggleLike(result.id, e)} className={`p-2 transition-all ${likedTracks.includes(result.id) ? 'text-red-500 scale-110' : 'text-white/10 hover:text-white'}`}>
-                          <Heart size={20} fill={likedTracks.includes(result.id) ? "currentColor" : "none"} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
             </motion.div>
           )}
 
