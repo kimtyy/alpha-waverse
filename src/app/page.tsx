@@ -500,9 +500,6 @@ export default function AlphaWaverseEngine() {
         : "✅ Global legacy asset linked! You can now view it in your Studio.");
     }, 2000);
   };
-      alert(lang === 'KR' ? "레거시 자산 통합 완료! 글로벌 유통 통계가 내 노드에 연결되었습니다." : "Legacy asset integrated! Global distribution stats linked to your node.");
-    }, 2500);
-  };
 
   const triggerSync = () => {
     setIsSyncing(true);
