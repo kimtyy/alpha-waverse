@@ -113,6 +113,8 @@ export default function AlphaWaverseEngine() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importIsrc, setImportIsrc] = useState('');
   const [legacyAssetIds, setLegacyAssetIds] = useState<string[]>([]);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchFiles, setBatchFiles] = useState<File[]>([]);
 
   // DistroKid-style Registration Modal State
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -329,46 +331,58 @@ export default function AlphaWaverseEngine() {
       setUploadProducer('');
       setShowUploadModal(true);
     } else {
-      const confirmBatch = window.confirm(lang === 'KR' 
-        ? `${newFiles.length}개의 파일을 일괄 등록하시겠습니까? (파일명이 곡 제목으로 자동 설정됩니다.)` 
-        : `Register ${newFiles.length} files in batch? (File names will be used as titles.)`);
-      
-      if (confirmBatch) {
-        setIsUploading(true);
-        setTimeout(async () => {
-          const newAssets = [];
-          const newSigs = new Set(registeredFilenames);
-
-          for (const file of newFiles) {
-            const newId = `user-asset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-            const title = file.name.split('.')[0];
-            
-            try {
-              await saveToIndexedDB(newId, file);
-              const localUrl = URL.createObjectURL(file);
-              setCustomUrls(prev => ({ ...prev, [newId]: localUrl }));
-              newAssets.push(newId);
-              newSigs.add(`${file.name}-${file.size}`);
-              
-              setCustomTitles(prev => {
-                const updated = { ...prev, [newId]: title };
-                localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updated));
-                return updated;
-              });
-            } catch (err) {
-              console.error("Batch Save Failed", err);
-            }
-          }
-          
-          setRegisteredFilenames(newSigs);
-          setOwnedAssets(prev => [...newAssets, ...prev]);
-          setIsUploading(false);
-          alert(lang === 'KR' ? "대량 등록 완료! 귀하의 주권적 라이브러리가 구축되었습니다." : "Batch registration complete! Your sovereign library is built.");
-        }, 2000);
-      }
+      setBatchFiles(newFiles);
+      setUploadArtist(''); // Reset common artist
+      setUploadProducer(''); // Reset common producer
+      setShowBatchModal(true);
     }
     
     e.target.value = '';
+  };
+
+  const handleBatchUpload = async () => {
+    if (batchFiles.length === 0) return;
+    
+    setIsUploading(true);
+    setShowBatchModal(false);
+    
+    setTimeout(async () => {
+      const newAssets = [];
+      const newSigs = new Set(registeredFilenames);
+      const updatedTitles = { ...customTitles };
+      const updatedProducers = { ...customProducers };
+
+      for (const file of batchFiles) {
+        const newId = `user-asset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const title = file.name.split('.')[0];
+        
+        try {
+          await saveToIndexedDB(newId, file);
+          const localUrl = URL.createObjectURL(file);
+          setCustomUrls(prev => ({ ...prev, [newId]: localUrl }));
+          newAssets.push(newId);
+          newSigs.add(`${file.name}-${file.size}`);
+          
+          updatedTitles[newId] = title;
+          if (uploadProducer) {
+            updatedProducers[newId] = uploadProducer;
+          }
+        } catch (err) {
+          console.error("Batch Save Failed", err);
+        }
+      }
+      
+      setCustomTitles(updatedTitles);
+      setCustomProducers(updatedProducers);
+      localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
+      localStorage.setItem('alpha_waverse_custom_producers', JSON.stringify(updatedProducers));
+      
+      setRegisteredFilenames(newSigs);
+      setOwnedAssets(prev => [...newAssets, ...prev]);
+      setIsUploading(false);
+      setBatchFiles([]);
+      alert(lang === 'KR' ? `${newAssets.length}개의 자산이 일괄 등록되었습니다!` : `${newAssets.length} assets registered in batch!`);
+    }, 2000);
   };
 
   const handleFinalUpload = async () => {
@@ -843,21 +857,21 @@ export default function AlphaWaverseEngine() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="w-full h-full flex flex-col pt-10 overflow-hidden"
+              className="w-full h-full flex flex-col pt-4 overflow-hidden"
             >
               <div className="flex flex-col items-center gap-4 mb-10 text-center">
                 <div className="relative">
-                  <Cpu size={32} className="text-primary" />
-                  <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 3 }} className="absolute -inset-4 bg-primary/5 blur-2xl rounded-full" />
+                  <Cpu size={28} className="text-primary" />
+                  <motion.div animate={{ opacity: [0.2, 0.4, 0.2] }} transition={{ repeat: Infinity, duration: 3 }} className="absolute -inset-2 bg-primary/5 blur-xl rounded-full" />
                 </div>
-                <div className="flex flex-col items-center gap-1">
-                  <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.studio}</h2>
-                  <div className="bg-primary/20 text-primary px-2 py-0.5 rounded-full text-[6px] font-black tracking-widest uppercase mb-1">
+                <div className="flex flex-col items-center gap-1 mb-2">
+                  <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase leading-tight">{T.studio}</h2>
+                  <div className="bg-primary/20 text-primary px-2 py-0.5 rounded-full text-[6px] font-black tracking-widest uppercase">
                     v1.2 - NODE ACTIVE
                   </div>
                   <div 
                     onClick={triggerSync}
-                    className="flex items-center gap-2 cursor-pointer hover:opacity-100 transition-opacity opacity-60"
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-100 transition-opacity opacity-60 mt-1"
                   >
                     <RefreshCw size={10} className={`text-primary ${isSyncing ? 'animate-spin' : ''}`} />
                     <span className="text-[8px] font-black uppercase tracking-widest text-primary">
@@ -912,7 +926,7 @@ export default function AlphaWaverseEngine() {
                       className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-primary px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 transition-all disabled:opacity-50"
                     >
                       {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Layers size={12} />}
-                      {lang === 'KR' ? "대량 등록" : "Batch Import"}
+                      {lang === 'KR' ? "Pro 대량 등록" : "Pro Batch Import"}
                     </button>
                     <button 
                       onClick={() => setShowImportModal(true)}
@@ -1336,6 +1350,80 @@ export default function AlphaWaverseEngine() {
       </AnimatePresence>
 
       {/* REGISTRATION MODAL (DISTROKID STYLE) */}
+      {/* PRO BATCH REGISTRATION MODAL */}
+      <AnimatePresence>
+        {showBatchModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[550] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6"
+          >
+            <div className="w-full max-w-lg premium-glass p-8 md:p-12 rounded-[3rem] border border-primary/20 shadow-[0_50px_100px_rgba(0,0,0,0.9)]">
+              <div className="flex justify-between items-center mb-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+                    <Layers size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black uppercase tracking-widest">{lang === 'KR' ? "Pro 대량 등록" : "Pro Batch Registration"}</h3>
+                    <p className="text-[10px] font-medium opacity-40 uppercase tracking-[0.2em]">{batchFiles.length} {lang === 'KR' ? "개 파일 선택됨" : "Files Selected"}</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowBatchModal(false)} className="p-2 hover:bg-white/5 rounded-full">
+                  <Plus className="rotate-45 opacity-40" size={32} />
+                </button>
+              </div>
+
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 gap-6">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">01. {lang === 'KR' ? "공통 아티스트" : "Common Artist"}</label>
+                    <input 
+                      type="text" 
+                      value={uploadArtist}
+                      onChange={(e) => setUploadArtist(e.target.value)}
+                      placeholder="e.g. Haerim (AI)"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-sm focus:border-primary outline-none transition-all placeholder:opacity-20 font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">02. {lang === 'KR' ? "공통 프로듀서" : "Common Producer"}</label>
+                    <input 
+                      type="text" 
+                      value={uploadProducer}
+                      onChange={(e) => setUploadProducer(e.target.value)}
+                      placeholder="e.g. K.Kim"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-sm focus:border-primary outline-none transition-all placeholder:opacity-20 font-bold"
+                    />
+                  </div>
+                </div>
+                
+                <div className="bg-white/5 rounded-2xl p-4 max-h-40 overflow-y-auto custom-scrollbar border border-white/5">
+                  <p className="text-[8px] font-black uppercase opacity-40 mb-2">{lang === 'KR' ? "등록 대기 목록" : "Pending Queue"}</p>
+                  <div className="space-y-2">
+                    {batchFiles.map((f, idx) => (
+                      <div key={idx} className="flex items-center gap-3 text-[10px] opacity-60">
+                        <MusicIcon size={10} className="text-primary" />
+                        <span className="truncate font-medium">{f.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <button 
+                  onClick={handleBatchUpload}
+                  className="w-full bg-primary text-black py-6 rounded-full text-xs font-black uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-[0_20px_50px_rgba(var(--primary-rgb),0.3)]"
+                >
+                  <Zap size={16} fill="currentColor" />
+                  {lang === 'KR' ? "일괄 등록 및 주권 확보" : "Batch Register & Secure IP"}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showUploadModal && (
           <motion.div 
@@ -1351,8 +1439,8 @@ export default function AlphaWaverseEngine() {
                     <MusicIcon size={24} />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black uppercase tracking-widest">{lang === 'KR' ? "자산 등록 (DistroKid Std.)" : "Asset Registration"}</h3>
-                    <p className="text-[10px] font-medium opacity-40 uppercase tracking-[0.2em]">Global Distribution Standard Meta</p>
+                    <h3 className="text-2xl font-black uppercase tracking-widest">{lang === 'KR' ? "자산 등록 (Alpha Waverse)" : "Asset Registration"}</h3>
+                    <p className="text-[10px] font-medium opacity-40 uppercase tracking-[0.2em]">Sovereign IP Management System</p>
                   </div>
                 </div>
                 <button onClick={() => setShowUploadModal(false)} className="p-2 hover:bg-white/5 rounded-full">
