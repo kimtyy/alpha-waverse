@@ -651,8 +651,6 @@ export default function AlphaWaverseEngine() {
               </AnimatePresence>
             </motion.div>
           )}
-            </motion.div>
-          )}
 
           {view === 'LIKES' && (
             <motion.div 
