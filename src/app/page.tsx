@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward,
-  Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight
+  Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight,
+  Video, RefreshCw
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
 
