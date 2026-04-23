@@ -94,10 +94,59 @@ export default function AlphaWaverseEngine() {
 
   // User Assets State
   const [likedTracks, setLikedTracks] = useState<string[]>([]);
-  const [ownedAssets, setOwnedAssets] = useState<string[]>(['hwb-vol-1', 'haerin-demo-1']);
+  const [ownedAssets, setOwnedAssets] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showVision, setShowVision] = useState(false);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [isProcessingAI, setIsProcessingAI] = useState(false);
+  const [aiTaskType, setAiTaskType] = useState<'SCORE' | 'MR' | null>(null);
+
+  // Asset URL & Generated Sub-Assets Management
+  const [customUrls, setCustomUrls] = useState<Record<string, string>>({});
+  const [generatedAssets, setGeneratedAssets] = useState<Record<string, { scores: string[], mrs: string[] }>>({});
+  const [showScoreViewer, setShowScoreViewer] = useState<string | null>(null); // Track ID
+  const [showVideoPlayer, setShowVideoPlayer] = useState<string | null>(null); // Track ID
+
+  // Global Sync & Legacy Integration
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importIsrc, setImportIsrc] = useState('');
+  const [legacyAssetIds, setLegacyAssetIds] = useState<string[]>([]);
+
+  // IndexedDB for Persistent Audio Storage
+  const saveToIndexedDB = async (id: string, file: File) => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('AlphaWaverseDB', 1);
+      request.onupgradeneeded = () => request.result.createObjectStore('assets');
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction('assets', 'readwrite');
+        tx.objectStore('assets').put(file, id);
+        tx.oncomplete = () => resolve(true);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  };
+
+  const loadFromIndexedDB = async (id: string) => {
+    return new Promise<string | null>((resolve) => {
+      const request = indexedDB.open('AlphaWaverseDB', 1);
+      request.onsuccess = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('assets')) { resolve(null); return; }
+        const tx = db.transaction('assets', 'readonly');
+        const getReq = tx.objectStore('assets').get(id);
+        getReq.onsuccess = () => {
+          if (getReq.result) {
+            resolve(URL.createObjectURL(getReq.result));
+          } else {
+            resolve(null);
+          }
+        };
+      };
+      request.onerror = () => resolve(null);
+    });
+  };
 
   // Search Debouncing Logic
   useEffect(() => {
@@ -115,6 +164,9 @@ export default function AlphaWaverseEngine() {
     
     const savedOwned = localStorage.getItem('alpha_waverse_owned');
     if (savedOwned) setOwnedAssets(JSON.parse(savedOwned));
+
+    const savedGenerated = localStorage.getItem('alpha_waverse_generated');
+    if (savedGenerated) setGeneratedAssets(JSON.parse(savedGenerated));
   }, []);
 
   // Data Persistence: Save to LocalStorage
@@ -125,6 +177,36 @@ export default function AlphaWaverseEngine() {
   useEffect(() => {
     localStorage.setItem('alpha_waverse_owned', JSON.stringify(ownedAssets));
   }, [ownedAssets]);
+
+  useEffect(() => {
+    localStorage.setItem('alpha_waverse_generated', JSON.stringify(generatedAssets));
+  }, [generatedAssets]);
+
+  useEffect(() => {
+    localStorage.setItem('alpha_waverse_legacy_ids', JSON.stringify(legacyAssetIds));
+  }, [legacyAssetIds]);
+
+  useEffect(() => {
+    const savedLegacy = localStorage.getItem('alpha_waverse_legacy_ids');
+    if (savedLegacy) setLegacyAssetIds(JSON.parse(savedLegacy));
+
+    // Load custom URLs from IndexedDB
+    const loadAllCustomUrls = async () => {
+      const savedOwned = localStorage.getItem('alpha_waverse_owned');
+      if (savedOwned) {
+        const ids = JSON.parse(savedOwned) as string[];
+        const urlMap: Record<string, string> = {};
+        for (const id of ids) {
+          if (id.startsWith('user-asset-')) {
+            const url = await loadFromIndexedDB(id);
+            if (url) urlMap[id] = url;
+          }
+        }
+        setCustomUrls(prev => ({ ...prev, ...urlMap }));
+      }
+    };
+    loadAllCustomUrls();
+  }, []);
 
   // Economy Stats Simulation
   const [minedShares, setMinedShares] = useState(124.5931);
@@ -139,26 +221,48 @@ export default function AlphaWaverseEngine() {
     return () => clearInterval(timer);
   }, []);
 
-  // Audio Playback Sync Controller
+  // Audio Source & Playback Controller (Unified)
   useEffect(() => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.play().catch(err => console.log("Play error:", err));
-      } else {
-        audioRef.current.pause();
-      }
-    }
-  }, [isPlaying]);
+    if (!activeTrack || !audioRef.current) return;
 
-  // Audio Source Controller
-  useEffect(() => {
-    if (activeTrack && audioRef.current) {
-      audioRef.current.src = activeTrack.url;
-      if (isPlaying) {
-        audioRef.current.play().catch(err => console.log("Source play error:", err));
-      }
+    // Handle Video switching
+    if (activeTrack.type === 'Video') {
+      setIsPlaying(false); // Pause background audio
+      setShowVideoPlayer(activeTrack.id);
+      return;
     }
-  }, [activeTrack]);
+
+    const playAudio = async () => {
+      try {
+        // Resolve the most current URL (prioritize customUrls for user assets)
+        const currentUrl = customUrls[activeTrack.id] || activeTrack.url;
+        
+        if (audioRef.current!.src !== currentUrl) {
+          audioRef.current!.src = currentUrl;
+          audioRef.current!.load();
+        }
+
+        if (isPlaying) {
+          await audioRef.current!.play();
+        } else {
+          audioRef.current!.pause();
+        }
+      } catch (err) {
+        console.error("Playback System Error:", err);
+        // If it's a user asset and playback failed, try to restore from IndexedDB
+        if (activeTrack.id.startsWith('user-asset-')) {
+          const restoredUrl = await loadFromIndexedDB(activeTrack.id);
+          if (restoredUrl && audioRef.current) {
+            setCustomUrls(prev => ({ ...prev, [activeTrack.id]: restoredUrl }));
+            audioRef.current.src = restoredUrl;
+            if (isPlaying) audioRef.current.play().catch(e => console.log("Final recovery failed", e));
+          }
+        }
+      }
+    };
+
+    playAudio();
+  }, [activeTrack, isPlaying, customUrls]);
 
   // Handle Song Ended (Continuous Play)
   const handleTrackEnd = () => {
@@ -195,37 +299,106 @@ export default function AlphaWaverseEngine() {
 
     setIsUploading(true);
     
-    setTimeout(() => {
+    setTimeout(async () => {
       const newId = `user-asset-${Date.now()}`;
-      setOwnedAssets(prev => [newId, ...prev]);
+      const isVideo = file.type.startsWith('video/');
       
-      const updatedTitles = { ...customTitles, [newId]: title };
-      setCustomTitles(updatedTitles);
-      localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
-      
-      setIsUploading(false);
-      alert(lang === 'KR' ? "자산 등록이 완료되었습니다. 글로벌 ISRC 발급 대행이 시작되었습니다!" : "Asset registered! Global ISRC proxy registration initiated.");
-    }, 3000);
+      try {
+        await saveToIndexedDB(newId, file);
+        const localUrl = URL.createObjectURL(file);
+        setCustomUrls(prev => ({ ...prev, [newId]: localUrl }));
+        
+        // Immediate update to state
+        setOwnedAssets(prev => [newId, ...prev]);
+        const updatedTitles = { ...customTitles, [newId]: title };
+        setCustomTitles(updatedTitles);
+        localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
+        
+        setIsUploading(false);
+
+        // Prepare object for immediate playback
+        const newAsset = {
+          id: newId,
+          title: title,
+          type: (isVideo ? 'Video' : 'Music') as any,
+          category: isVideo ? (lang === 'KR' ? '마스터 영상 (YouTube)' : 'Master Video (YouTube)') : (lang === 'KR' ? '사용자 자산' : 'User Asset'),
+          isrc: `ISRC-USR-${newId.slice(-4)}`,
+          status: 'Certified',
+          url: localUrl
+        };
+        
+        setActiveTrack(newAsset as any); // Set context for both
+        if (isVideo) {
+          setShowVideoPlayer(newId);
+          setIsPlaying(false); // Stop background audio
+        } else {
+          setIsPlaying(true);
+        }
+      } catch (err) {
+        console.error("Upload/Save Failed", err);
+        alert(lang === 'KR' ? "파일 저장 중 오류가 발생했습니다." : "Error occurred while saving file.");
+        setIsUploading(false);
+      }
+    }, 2000);
 
     // Reset file input
     e.target.value = '';
   };
 
-  const filteredResults = useMemo(() => {
-    if (!debouncedSearchTerm.trim()) return [];
-    const lowerSearch = debouncedSearchTerm.toLowerCase();
-    return WAVE_QUERY_DATA.filter(item => {
-      const titleMatch = item.title.toLowerCase().includes(lowerSearch);
-      const categoryMatch = item.category.toLowerCase().includes(lowerSearch);
-      const koreanMatch = (
-        (lowerSearch.includes('명상') && item.title.toLowerCase().includes('meditation')) ||
-        (lowerSearch.includes('딥') && item.title.toLowerCase().includes('deep')) ||
-        (lowerSearch.includes('흐름') && item.title.toLowerCase().includes('flow')) ||
-        (lowerSearch.includes('알파') && item.title.toLowerCase().includes('alpha'))
-      );
-      return titleMatch || categoryMatch || koreanMatch;
-    }).slice(0, 8);
-  }, [debouncedSearchTerm]);
+  const handleAITask = (type: 'SCORE' | 'MR') => {
+    if (!activeTrack) return;
+    
+    setAiTaskType(type);
+    setIsProcessingAI(true);
+    
+    setTimeout(() => {
+      setIsProcessingAI(false);
+      
+      const trackId = activeTrack.id;
+      setGeneratedAssets(prev => {
+        const current = prev[trackId] || { scores: [], mrs: [] };
+        if (type === 'SCORE') {
+          return { ...prev, [trackId]: { ...current, scores: [...current.scores, `Score-${Date.now()}`] } };
+        } else {
+          return { ...prev, [trackId]: { ...current, mrs: [...current.mrs, `MR-${Date.now()}`] } };
+        }
+      });
+
+      if (type === 'SCORE') {
+        setShowScoreViewer(trackId);
+      } else {
+        alert(lang === 'KR' ? "보컬 제거가 완료되었습니다! 내 노드(Studio)에서 MR 자산을 확인할 수 있습니다." : "Vocal removal complete! You can find the MR asset in your Node (Studio).");
+      }
+      
+      setAiTaskType(null);
+    }, 3500);
+  };
+
+  const handleImportLegacy = () => {
+    if (!importIsrc) return;
+    setIsSyncing(true);
+    
+    setTimeout(() => {
+      // Simulation: Find a track based on ISRC from our existing data or mock it
+      const existing = WAVE_QUERY_DATA.find(t => t.id.includes(importIsrc.toLowerCase()) || importIsrc.length > 5);
+      const newId = existing ? existing.id : `legacy-asset-${importIsrc}`;
+      
+      if (!ownedAssets.includes(newId)) {
+        setOwnedAssets(prev => [newId, ...prev]);
+        setLegacyAssetIds(prev => [...prev, newId]);
+      }
+      
+      setIsSyncing(false);
+      setShowImportModal(false);
+      setImportIsrc('');
+      alert(lang === 'KR' ? "레거시 자산 통합 완료! 글로벌 유통 통계가 내 노드에 연결되었습니다." : "Legacy asset integrated! Global distribution stats linked to your node.");
+    }, 2500);
+  };
+
+  const triggerSync = () => {
+    setIsSyncing(true);
+    setTimeout(() => setIsSyncing(false), 2000);
+  };
 
   const toggleLike = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -235,6 +408,34 @@ export default function AlphaWaverseEngine() {
   const removeFromVault = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setLikedTracks(prev => prev.filter(t => t !== id));
+  };
+
+  const deleteAsset = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(lang === 'KR' ? "이 자산을 삭제하시겠습니까?" : "Delete this asset?")) {
+      setOwnedAssets(prev => prev.filter(t => t !== id));
+      // Cleanup custom titles and URLs
+      const newTitles = { ...customTitles };
+      delete newTitles[id];
+      setCustomTitles(newTitles);
+      localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(newTitles));
+      
+      const newUrls = { ...customUrls };
+      delete newUrls[id];
+      setCustomUrls(newUrls);
+      
+      // Optionally delete from IndexedDB (omitted for brevity but recommended)
+    }
+  };
+
+  const clearStudio = () => {
+    if (window.confirm(lang === 'KR' ? "모든 자산을 삭제하고 스튜디오를 초기화하시겠습니까?" : "Clear all assets and reset Studio?")) {
+      setOwnedAssets([]);
+      setCustomTitles({});
+      setCustomUrls({});
+      localStorage.removeItem('alpha_waverse_owned');
+      localStorage.removeItem('alpha_waverse_custom_titles');
+    }
   };
 
   // Load custom titles for uploaded assets
@@ -249,17 +450,20 @@ export default function AlphaWaverseEngine() {
     return ownedAssets.map(id => {
       const original = WAVE_QUERY_DATA.find(t => t.id === id);
       if (original) return original;
+      
+      const isVideoId = id.includes('video') || (customTitles[id] && customTitles[id].toLowerCase().includes('video')); // Fallback detection
+      
       return {
         id,
-        title: customTitles[id] || "New Sonic Asset",
-        type: 'Music' as const,
-        category: 'User Asset',
+        title: customTitles[id] || (lang === 'KR' ? "신규 등록 자산" : "New Registered Asset"),
+        type: (isVideoId ? 'Video' : 'Music') as any,
+        category: isVideoId ? (lang === 'KR' ? '마스터 영상 (YouTube)' : 'Master Video (YouTube)') : (lang === 'KR' ? '사용자 자산' : 'User Asset'),
         isrc: `ISRC-USR-${id.slice(-4)}`,
         status: 'Certified',
-        url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-1-1.mp3' // Default mock audio
+        url: customUrls[id] || '' 
       };
     });
-  }, [ownedAssets, customTitles]);
+  }, [ownedAssets, customTitles, customUrls, lang]);
 
   return (
     <main className="h-[100dvh] w-full bg-black text-white selection:bg-primary/30 flex flex-col items-center relative overflow-hidden font-sans">
@@ -488,7 +692,21 @@ export default function AlphaWaverseEngine() {
                   <Cpu size={32} className="text-primary" />
                   <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 3 }} className="absolute -inset-4 bg-primary/5 blur-2xl rounded-full" />
                 </div>
-                <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.studio}</h2>
+                <div className="flex flex-col items-center gap-1">
+                  <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.studio}</h2>
+                  <div className="bg-primary/20 text-primary px-2 py-0.5 rounded-full text-[6px] font-black tracking-widest uppercase mb-1">
+                    v1.2 - NODE ACTIVE
+                  </div>
+                  <div 
+                    onClick={triggerSync}
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-100 transition-opacity opacity-60"
+                  >
+                    <RefreshCw size={10} className={`text-primary ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-primary">
+                      {isSyncing ? (lang === 'KR' ? "동기화 중..." : "Syncing...") : (lang === 'KR' ? "글로벌 노드 연결됨" : "Global Node Connected")}
+                    </span>
+                  </div>
+                </div>
                 
                 {/* VISION PROCLAMATION CARD */}
                 <button 
@@ -507,7 +725,7 @@ export default function AlphaWaverseEngine() {
                   <ChevronRight size={16} className="text-primary group-hover:translate-x-1 transition-transform" />
                 </button>
 
-                <div className="flex flex-col items-center gap-3">
+                <div className="flex flex-col items-center gap-4 w-full">
                   <input 
                     type="file" 
                     ref={fileInputRef} 
@@ -515,20 +733,34 @@ export default function AlphaWaverseEngine() {
                     accept="audio/*,video/*"
                     className="hidden" 
                   />
-                  <div className="flex items-center gap-3">
+                  <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
                     <button 
                       onClick={() => playAll(ownedDisplayList as any)}
-                      className="flex items-center gap-2 bg-primary text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(var(--primary-rgb),0.3)]"
+                      className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(var(--primary-rgb),0.3)]"
                     >
                       <Play size={12} fill="currentColor" /> {T.playAllStudio}
                     </button>
                     <button 
                       onClick={handleUpload}
                       disabled={isUploading}
-                      className="flex items-center gap-2 bg-white/5 border border-white/10 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-50"
+                      className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-50"
                     >
                       {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                       {isUploading ? T.uploading : T.uploadAsset}
+                    </button>
+                    <button 
+                      onClick={() => setShowImportModal(true)}
+                      className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                    >
+                      <Globe size={12} />
+                      {lang === 'KR' ? "레거시 가져오기" : "Import Legacy"}
+                    </button>
+                    <button 
+                      onClick={clearStudio}
+                      className="flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all"
+                    >
+                      <Trash2 size={12} />
+                      {lang === 'KR' ? "초기화" : "Clear"}
                     </button>
                   </div>
                   <p className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">{T.formatHint}</p>
@@ -550,31 +782,98 @@ export default function AlphaWaverseEngine() {
                   </motion.div>
                 )}
                 {ownedDisplayList.map(item => (
-                  <div 
-                    key={item.id} 
-                    onClick={() => { setActiveTrack(item as any); setPlaylist(ownedDisplayList as any); setIsPlaying(true); }} 
-                    className={`premium-glass p-6 rounded-3xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-primary/5 group'}`}
-                  >
-                    <div className="flex items-center gap-5">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${activeTrack?.id === item.id ? 'bg-primary text-black shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]' : 'bg-primary/10 text-primary group-hover:scale-105'}`}>
-                        {activeTrack?.id === item.id && isPlaying ? <Activity size={24} className="animate-pulse" /> : <CloudUpload size={24} />}
-                      </div>
-                      <div>
-                        <p className="text-base md:text-xl font-black tracking-tight">{item.title}</p>
-                        <div className="flex items-center gap-2 opacity-30 text-[10px] font-black uppercase tracking-widest">
-                          <span>{'status' in item ? item.status : 'Certified'}</span>
-                          <span className="w-1 h-1 rounded-full bg-white" />
-                          <span className="text-primary">{T.nodeCertified}</span>
+                  <div key={item.id} className="flex flex-col gap-2">
+                    <div 
+                      onClick={() => { setActiveTrack(item as any); setPlaylist(ownedDisplayList as any); setIsPlaying(true); }} 
+                      className={`premium-glass p-6 rounded-3xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-primary/5 group'}`}
+                    >
+                      <div className="flex items-center gap-5">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${activeTrack?.id === item.id ? 'bg-primary text-black shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]' : 'bg-primary/10 text-primary group-hover:scale-105'}`}>
+                          {activeTrack?.id === item.id && isPlaying ? (
+                            <Activity size={24} className="animate-pulse" />
+                          ) : item.type === 'Video' ? (
+                            <div className="relative">
+                              <Video size={24} />
+                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                            </div>
+                          ) : (
+                            <CloudUpload size={24} />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-base md:text-xl font-black tracking-tight">{item.title}</p>
+                          <div className="flex items-center gap-2 opacity-30 text-[10px] font-black uppercase tracking-widest">
+                            <span className="text-primary">{item.type}</span>
+                            <span className="w-1 h-1 rounded-full bg-white" />
+                            <span>{'status' in item ? item.status : 'Certified'}</span>
+                            <span className="w-1 h-1 rounded-full bg-white" />
+                            <span className="text-primary">{legacyAssetIds.includes(item.id) ? "LEGACY" : T.nodeCertified}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="text-[7px] font-black px-2 py-0.5 bg-primary text-black rounded-full animate-pulse">ISRC PROXY</div>
-                        <div className="text-[6px] font-black opacity-30 uppercase tracking-tighter">Global Registry Pending</div>
+                      <div className="flex items-center gap-4">
+                        <div className="flex flex-col items-end gap-1">
+                          <div className={`text-[7px] font-black px-2 py-0.5 rounded-full animate-pulse ${legacyAssetIds.includes(item.id) ? 'bg-secondary text-white' : 'bg-primary text-black'}`}>
+                            {legacyAssetIds.includes(item.id) ? "CROSS-PLATFORM" : "SOVEREIGN"}
+                          </div>
+                          <div className="text-[6px] font-black opacity-30 uppercase tracking-tighter">
+                            {legacyAssetIds.includes(item.id) ? "External Registry Linked" : "Global Registry Pending"}
+                          </div>
+                        </div>
+                        <Share2 size={20} className="text-white/20 hover:text-primary transition-colors" />
+                        <button 
+                          onClick={(e) => deleteAsset(item.id, e)}
+                          className="text-white/10 hover:text-red-500 transition-colors p-2"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
-                      <Share2 size={20} className="text-white/20 hover:text-primary transition-colors" />
                     </div>
+
+                    {/* Sub-Assets (Scores/MRs) */}
+                    {generatedAssets[item.id] && (generatedAssets[item.id].scores.length > 0 || generatedAssets[item.id].mrs.length > 0) && (
+                      <div className="ml-8 flex flex-col gap-2">
+                        {generatedAssets[item.id].scores.map((score, sIdx) => (
+                          <motion.div 
+                            key={score}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <FileText size={14} className="text-primary" />
+                              <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Digital Score v{sIdx + 1}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <button onClick={() => setShowScoreViewer(item.id)} className="text-[8px] font-black uppercase text-primary hover:underline">View</button>
+                              <button className="p-1 text-white/20 hover:text-white"><Plus size={12} className="rotate-45" /></button>
+                            </div>
+                          </motion.div>
+                        ))}
+                        {generatedAssets[item.id].mrs.map((mr, mIdx) => (
+                          <motion.div 
+                            key={mr}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Mic2 size={14} className="text-secondary" />
+                              <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Vocal-Removed MR v{mIdx + 1}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <button 
+                                onClick={() => { setActiveTrack({ ...item, title: `${item.title} (MR)` } as any); setIsPlaying(true); }}
+                                className="text-[8px] font-black uppercase text-secondary hover:underline"
+                              >
+                                Play
+                              </button>
+                              <button className="p-1 text-white/20 hover:text-white"><Plus size={12} className="rotate-45" /></button>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -627,14 +926,14 @@ export default function AlphaWaverseEngine() {
               </div>
               <div className="flex items-center gap-3">
                 <button 
-                  onClick={() => alert(lang === 'KR' ? 'AI 악보 생성 및 채보 엔진이 가동 중입니다...' : 'AI Score Generation & Transcription Engine in progress...')}
+                  onClick={() => handleAITask('SCORE')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all group border border-white/5 hover:border-primary/30"
                 >
                   <FileText size={12} className="group-hover:text-primary transition-colors" />
                   <span className="text-[8px] font-black uppercase tracking-wider">{T.score}</span>
                 </button>
                 <button 
-                  onClick={() => alert(lang === 'KR' ? 'AI 보컬 제거 및 MR 추출 엔진이 가동 중입니다...' : 'AI Vocal Removal & MR Extraction Engine in progress...')}
+                  onClick={() => handleAITask('MR')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all group border border-white/5 hover:border-secondary/30"
                 >
                   <Mic2 size={12} className="group-hover:text-secondary transition-colors" />
@@ -718,6 +1017,238 @@ export default function AlphaWaverseEngine() {
         className="hidden" 
       />
 
+      {/* AI PROCESSING OVERLAY */}
+      <AnimatePresence>
+        {isProcessingAI && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center"
+          >
+            <div className="relative mb-8">
+              <div className="w-24 h-24 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Cpu size={32} className="text-primary animate-pulse" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-black tracking-[0.3em] uppercase mb-2">
+              {aiTaskType === 'SCORE' ? "Analyzing Score" : "Extracting MR"}
+            </h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-primary/60 animate-pulse">
+              {lang === 'KR' ? "AI 하이브리드 노드 연산 중..." : "AI HYBRID NODE COMPUTING..."}
+            </p>
+            <div className="mt-8 w-64 h-1 bg-white/5 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ x: '-100%' }}
+                animate={{ x: '0%' }}
+                transition={{ duration: 3.5, ease: "easeInOut" }}
+                className="h-full bg-gradient-to-r from-primary to-secondary"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* SCORE VIEWER MODAL */}
+      <AnimatePresence>
+        {showScoreViewer && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 1.1 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="fixed inset-0 z-[250] bg-black flex flex-col p-6 overflow-hidden"
+          >
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/20 text-primary rounded-xl">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-widest">{WAVE_QUERY_DATA.find(t => t.id === showScoreViewer)?.title || customTitles[showScoreViewer]}</h3>
+                  <p className="text-[10px] font-black uppercase opacity-40 tracking-widest">Digital Sheet Music v1.0</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowScoreViewer(null)} 
+                className="p-3 bg-white/5 rounded-full hover:bg-white/10 transition-colors"
+              >
+                <Plus className="rotate-45" size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 bg-white rounded-[2rem] p-8 md:p-12 overflow-y-auto shadow-[0_0_100px_rgba(255,255,255,0.1)] custom-scrollbar border-4 border-white/20">
+              <div className="max-w-3xl mx-auto space-y-16 py-8">
+                <div className="text-center space-y-4 mb-20">
+                  <div className="w-16 h-1 w-full bg-black mx-auto opacity-10" />
+                  <h1 className="text-5xl font-serif text-black font-bold uppercase tracking-tight">{WAVE_QUERY_DATA.find(t => t.id === showScoreViewer)?.title || customTitles[showScoreViewer]}</h1>
+                  <p className="text-sm font-serif italic text-black/60 tracking-widest uppercase">Composed & Transcribed by Alpha AI Waverse Engine</p>
+                  <div className="w-16 h-1 w-full bg-black mx-auto opacity-10" />
+                </div>
+
+                {/* Mock Sheet Music Representation */}
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="space-y-6 relative border-t-2 border-black/10 pt-10">
+                    <div className="flex items-center gap-1 absolute -top-3 left-0 bg-white px-3 text-[10px] font-black text-black/40 tracking-[0.2em] uppercase">SECTION 0{i}</div>
+                    
+                    <div className="space-y-3">
+                      <div className="h-[2px] bg-black/80 w-full" />
+                      <div className="h-[2px] bg-black/80 w-full" />
+                      <div className="h-[2px] bg-black/80 w-full" />
+                      <div className="h-[2px] bg-black/80 w-full" />
+                      <div className="h-[2px] bg-black/80 w-full" />
+                    </div>
+                    
+                    <div className="absolute top-12 left-10 flex gap-6">
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                        <div key={n} className="flex flex-col items-center">
+                          <div className={`w-4 h-6 bg-black rounded-full rotate-[-20deg] ${n % 3 === 0 ? 'mt-4' : n % 2 === 0 ? 'mt-2' : ''}`} />
+                          <div className="w-[1px] h-10 bg-black -mt-6 ml-4" />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-between px-2 text-[8px] font-black text-black/20 italic">
+                      <span>C Maj 7 / G</span>
+                      <span>D Min 9</span>
+                      <span>G 13 (b9)</span>
+                      <span>C Maj 9</span>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="pt-20 text-center">
+                  <p className="text-[10px] font-serif text-black/30 tracking-[0.3em] uppercase">© 2026 ALPHA WAVERSE ECOSYSTEM. ALL RIGHTS RESERVED.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-center gap-4 mt-10">
+              <button 
+                onClick={() => alert("Downloading PDF...")}
+                className="bg-primary text-black px-10 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)]"
+              >
+                Download PDF
+              </button>
+              <button 
+                onClick={() => { setShowScoreViewer(null); alert("Saved to your Node Vault!"); }}
+                className="bg-white/5 border border-white/10 text-white px-10 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
+              >
+                Save to My Node
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* LEGACY IMPORT MODAL */}
+      <AnimatePresence>
+        {showImportModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6"
+          >
+            <div className="w-full max-w-md premium-glass p-8 rounded-[2.5rem] border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-3">
+                  <Download className="text-primary rotate-180" />
+                  <h3 className="text-xl font-black uppercase tracking-widest">{lang === 'KR' ? "레거시 자산 가져오기" : "Import Legacy Asset"}</h3>
+                </div>
+                <button onClick={() => setShowImportModal(false)} className="p-2 hover:bg-white/5 rounded-full">
+                  <Plus className="rotate-45" size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">ISRC Code Entry</label>
+                  <input 
+                    type="text" 
+                    value={importIsrc}
+                    onChange={(e) => setImportIsrc(e.target.value.toUpperCase())}
+                    placeholder="e.g. KR-A12-23-00001"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold tracking-widest focus:border-primary outline-none transition-all placeholder:opacity-20"
+                  />
+                </div>
+                
+                <p className="text-[9px] font-medium opacity-40 leading-relaxed italic">
+                  * Entering a valid ISRC will trigger our Global Oracle to fetch metadata and distribution history from major streaming platforms for unified management.
+                </p>
+
+                <button 
+                  onClick={handleImportLegacy}
+                  disabled={!importIsrc || isSyncing}
+                  className="w-full bg-primary text-black py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+                >
+                  {isSyncing ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
+                  {isSyncing ? (lang === 'KR' ? "검색 중..." : "Searching...") : (lang === 'KR' ? "자산 연결하기" : "Link Global Asset")}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* VIDEO PLAYER MODAL */}
+      <AnimatePresence>
+        {showVideoPlayer && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-3xl flex flex-col p-4 md:p-10"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/20 text-primary rounded-2xl">
+                  <Play size={24} fill="currentColor" />
+                </div>
+                <div>
+                  <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">{customTitles[showVideoPlayer] || "Cinematic Asset"}</h3>
+                  <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Sovereign 4K Node Streaming</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowVideoPlayer(null)}
+                className="p-4 bg-white/5 rounded-full hover:bg-white/10 transition-colors"
+              >
+                <Plus className="rotate-45" size={32} />
+              </button>
+            </div>
+
+            <div className="flex-1 bg-black rounded-[2.5rem] overflow-hidden relative group border border-white/5 shadow-2xl">
+              <video 
+                src={customUrls[showVideoPlayer]} 
+                controls 
+                autoPlay
+                className="w-full h-full object-contain"
+              />
+              <div className="absolute top-6 left-6 flex gap-2">
+                <div className="bg-primary/80 backdrop-blur-md text-black px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest animate-pulse">LIVE NODE</div>
+                <div className="bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Ultra HD</div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-between items-center px-4">
+              <div className="flex items-center gap-6 text-white/40">
+                <div className="flex items-center gap-2">
+                  <Share2 size={16} />
+                  <span className="text-[10px] font-black uppercase">Distribute</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={16} />
+                  <span className="text-[10px] font-black uppercase">Stats</span>
+                </div>
+              </div>
+              <button className="bg-primary text-black px-10 py-4 rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)]">
+                Mint as Master NFT
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
