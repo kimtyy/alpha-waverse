@@ -563,8 +563,14 @@ export default function AlphaWaverseEngine() {
         id,
         title: customTitles[id] || (lang === 'KR' ? "신규 등록 자산" : "New Registered Asset"),
         type: (isVideoId ? 'Video' : 'Music') as any,
-        category: isVideoId ? (lang === 'KR' ? '마스터 영상 (YouTube)' : 'Master Video (YouTube)') : (lang === 'KR' ? '사용자 자산' : 'User Asset'),
-        isrc: `ISRC-USR-${id.slice(-4)}`,
+        category: isVideoId 
+          ? (lang === 'KR' ? '마스터 영상 (YouTube)' : 'Master Video (YouTube)') 
+          : id.startsWith('mr-asset-') 
+            ? (lang === 'KR' ? 'AI 하이브리드 MR' : 'AI Hybrid MR')
+            : id.startsWith('legacy-asset-')
+              ? (lang === 'KR' ? '레거시 IP 통합 자산' : 'Legacy IP Integrated Asset')
+              : (lang === 'KR' ? '주권적 마스터 자산' : 'Sovereign Master Asset'),
+        isrc: id.startsWith('legacy-asset-') ? id.split('-')[2] : `KR-AWV-26-${id.slice(-5).toUpperCase()}`,
         status: 'Certified',
         url: customUrls[id] || '' 
       };
