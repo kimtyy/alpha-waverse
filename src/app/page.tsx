@@ -110,6 +110,7 @@ export default function AlphaWaverseEngine() {
 
   // Global Sync & Legacy Integration
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [importIsrc, setImportIsrc] = useState('');
   const [legacyAssetIds, setLegacyAssetIds] = useState<string[]>([]);
   const [showBatchModal, setShowBatchModal] = useState(false);
@@ -357,6 +358,37 @@ export default function AlphaWaverseEngine() {
     }
   };
 
+  const deleteSelected = () => {
+    if (selectedTrackIds.length === 0) return;
+    if (window.confirm(lang === 'KR' ? `${selectedTrackIds.length}개의 자산을 삭제하시겠습니까?` : `Delete ${selectedTrackIds.length} assets?` )) {
+      setOwnedAssets(prev => prev.filter(id => !selectedTrackIds.includes(id)));
+      setSelectedTrackIds([]);
+    }
+  };
+
+  const handleImportLegacy = () => {
+    if (!importIsrc) return;
+    setIsSyncing(true);
+    setShowImportModal(false);
+    
+    setTimeout(() => {
+      const found = WAVE_QUERY_DATA.find(t => t.isrc.includes(importIsrc));
+      if (found) {
+        if (!ownedAssets.includes(found.id)) {
+          setOwnedAssets(prev => [found.id, ...prev]);
+          setLegacyAssetIds(prev => [...prev, found.id]);
+          alert(lang === 'KR' ? "레거시 자산이 스튜디오에 연결되었습니다!" : "Legacy asset linked to Studio!");
+        } else {
+          alert(lang === 'KR' ? "이미 등록된 자산입니다." : "Already registered.");
+        }
+      } else {
+        alert(lang === 'KR' ? "해당 ISRC를 찾을 수 없습니다." : "ISRC not found.");
+      }
+      setIsSyncing(false);
+      setImportIsrc('');
+    }, 2000);
+  };
+
   const handleBatchUpload = async () => {
     if (batchFiles.length === 0) return;
     
@@ -490,26 +522,20 @@ export default function AlphaWaverseEngine() {
       if (type === 'SCORE') {
         setShowScoreViewer(trackId);
       } else {
-        // Register MR as a NEW sovereign asset in the Studio
-        const mrTitle = `[MR/Instrumental] ${customTitles[trackId] || activeTrack.title}`;
-        const mrId = `mr-asset-${Date.now()}`;
-        
+        const mrTitle = `[MR/Inst] ${customTitles[trackId] || activeTrack.title}`;
+        const mrId = `mr-${trackId}-${Date.now()}`;
         setOwnedAssets(prev => [mrId, ...prev]);
         setCustomTitles(prev => {
           const updated = { ...prev, [mrId]: mrTitle };
           localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updated));
           return updated;
         });
-        
-        // Link to the same local URL for demonstration
-        const sourceUrl = customUrls[trackId] || activeTrack.url;
-        if (sourceUrl) {
-          setCustomUrls(prev => ({ ...prev, [mrId]: sourceUrl }));
-        }
-
-        alert(lang === 'KR' 
-          ? `✅ MR 추출 완료! '${mrTitle}'이(가) 내 스튜디오에 신규 자산으로 등록되었습니다.` 
-          : `✅ MR Extraction Complete! '${mrTitle}' has been registered in your Studio as a new asset.`);
+        setCustomProducers(prev => {
+          const updated = { ...prev, [mrId]: "AI Hybrid Engine" };
+          localStorage.setItem('alpha_waverse_custom_producers', JSON.stringify(updated));
+          return updated;
+        });
+        alert(lang === 'KR' ? "MR이 생성되어 스튜디오에 등록되었습니다! 목록 상단에서 확인하세요." : "MR generated and registered to Studio! Check the top of the list.");
       }
       
       setAiTaskType(null);
@@ -519,26 +545,24 @@ export default function AlphaWaverseEngine() {
   const handleImportLegacy = () => {
     if (!importIsrc) return;
     setIsSyncing(true);
+    setShowImportModal(false);
     
     setTimeout(() => {
-      const newId = `legacy-asset-${importIsrc}-${Date.now()}`;
-      const legacyTitle = `Global Legacy [${importIsrc}]`;
-      
-      setOwnedAssets(prev => [newId, ...prev]);
-      setLegacyAssetIds(prev => [...prev, newId]);
-      
-      setCustomTitles(prev => {
-        const updated = { ...prev, [newId]: legacyTitle };
-        localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updated));
-        return updated;
-      });
-      
+      // Find matching ISRC in the simulation data
+      const found = WAVE_QUERY_DATA.find(t => t.isrc.includes(importIsrc));
+      if (found) {
+        if (!ownedAssets.includes(found.id)) {
+          setOwnedAssets(prev => [found.id, ...prev]);
+          setLegacyAssetIds(prev => [...prev, found.id]);
+          alert(lang === 'KR' ? "✅ 글로벌 레거시 자산 연결 성공!" : "✅ Global legacy asset linked!");
+        } else {
+          alert(lang === 'KR' ? "이미 등록된 자산입니다." : "Already registered.");
+        }
+      } else {
+        alert(lang === 'KR' ? "해당 ISRC를 찾을 수 없습니다." : "ISRC not found.");
+      }
       setIsSyncing(false);
-      setShowImportModal(false);
       setImportIsrc('');
-      alert(lang === 'KR' 
-        ? "✅ 글로벌 레거시 자산 연결 성공! 이제 스튜디오에서 확인 가능합니다." 
-        : "✅ Global legacy asset linked! You can now view it in your Studio.");
     }, 2000);
   };
 
@@ -576,12 +600,14 @@ export default function AlphaWaverseEngine() {
   };
 
   const clearStudio = () => {
-    if (window.confirm(lang === 'KR' ? "모든 자산을 삭제하고 스튜디오를 초기화하시겠습니까?" : "Clear all assets and reset Studio?")) {
+    if (window.confirm(lang === 'KR' ? "모든 자산을 삭제하고 스튜디오를 초기화하시겠습니까? (되돌릴 수 없습니다)" : "Are you sure you want to clear all assets and reset the Studio? (This cannot be undone)")) {
       setOwnedAssets([]);
       setCustomTitles({});
       setCustomUrls({});
+      setCustomProducers({});
       localStorage.removeItem('alpha_waverse_owned');
       localStorage.removeItem('alpha_waverse_custom_titles');
+      localStorage.removeItem('alpha_waverse_custom_producers');
     }
   };
 
@@ -608,8 +634,8 @@ export default function AlphaWaverseEngine() {
         type: (isVideoId ? 'Video' : 'Music') as any,
         category: isVideoId 
           ? (lang === 'KR' ? '마스터 영상 (YouTube)' : 'Master Video (YouTube)') 
-          : id.startsWith('mr-asset-') 
-            ? (lang === 'KR' ? 'AI 하이브리드 MR' : 'AI Hybrid MR')
+          : id.startsWith('mr-') 
+            ? (lang === 'KR' ? 'AI 하이브리드 MR' : 'AI Hybrid Engine')
             : id.startsWith('legacy-asset-')
               ? (lang === 'KR' ? '레거시 IP 통합 자산' : 'Legacy IP Integrated Asset')
               : customProducers[id] 
@@ -977,7 +1003,7 @@ export default function AlphaWaverseEngine() {
                       className="col-span-1 flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all"
                     >
                       <Trash2 size={12} />
-                      {lang === 'KR' ? "초기화" : "Clear"}
+                      {lang === 'KR' ? "초기화" : "Total Reset"}
                     </button>
                   </div>
                   <p className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">{T.formatHint}</p>
@@ -1097,6 +1123,7 @@ export default function AlphaWaverseEngine() {
                       </div>
                     )}
                   </div>
+                ))}
                 {ownedDisplayList.length === 0 && (
                   <div className="h-full flex flex-col items-center justify-center opacity-20 gap-4 mt-20">
                     <MusicIcon size={40} strokeWidth={1} />
@@ -1117,6 +1144,7 @@ export default function AlphaWaverseEngine() {
                     <span className="text-[10px] font-black uppercase tracking-widest">{selectedTrackIds.length} {lang === 'KR' ? "곡 선택됨" : "Selected"}</span>
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedTrackIds([])} className="px-4 py-2 bg-black/10 rounded-lg text-[10px] font-black uppercase">Cancel</button>
+                      <button onClick={deleteSelected} className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-black uppercase">Delete</button>
                       <button onClick={() => playSelected(ownedDisplayList)} className="px-6 py-2 bg-black text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-2 shadow-xl">
                         <Play size={10} fill="currentColor" /> Play Selected
                       </button>
@@ -1200,61 +1228,43 @@ export default function AlphaWaverseEngine() {
         )}
       </AnimatePresence>
 
-      {/* ECONOMIC VISION MODAL */}
+      {/* VISION PROCLAMATION MODAL */}
       <AnimatePresence>
         {showVision && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-6"
+            className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6"
           >
-            <div className="w-full max-w-xl flex flex-col gap-8">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <h3 className="text-3xl font-black tracking-tighter text-primary uppercase">{T.visionTitle}</h3>
-                  <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">{T.visionSubtitle}</p>
+            <div className="w-full max-w-md premium-glass p-8 rounded-[2.5rem] border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="text-primary" />
+                  <h3 className="text-xl font-black uppercase tracking-widest">{T.visionTitle}</h3>
                 </div>
-                <button onClick={() => setShowVision(false)} className="p-2 bg-white/5 rounded-full text-white/40 hover:text-white">
-                  <Plus className="rotate-45" size={24} />
+                <button onClick={() => setShowVision(false)} className="p-2 hover:bg-white/5 rounded-full">
+                  <Plus className="rotate-45 opacity-40" />
                 </button>
               </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                {[
-                  { icon: ShieldCheck, title: T.bmStream1, desc: "YouTube style ad-sharing but with 90% payout to creators." },
-                  { icon: Coins, title: T.bmStream2, desc: "Direct sales of Scores, MRs, and Masters without middlemen." },
-                  { icon: Zap, title: T.bmStream3, desc: "Automatic rewards for providing your device as a P2P node." }
-                ].map((item, idx) => (
-                  <motion.div 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    key={idx} 
-                    className="premium-glass p-6 rounded-3xl border border-white/5 flex items-start gap-5"
-                  >
-                    <div className="p-3 bg-white/5 rounded-2xl text-primary">
-                      <item.icon size={24} />
-                    </div>
+              <div className="space-y-6 text-sm leading-relaxed opacity-80">
+                <p className="font-bold text-primary italic">"창작자가 자신의 자산을 완전히 통제하는 '주권적 음악 경제'를 구축합니다."</p>
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0"><Zap size={14} /></div>
                     <div>
-                      <h4 className="font-black text-lg uppercase tracking-tight mb-1">{item.title}</h4>
-                      <p className="text-xs font-medium opacity-40 leading-relaxed">{item.desc}</p>
+                      <p className="font-black uppercase tracking-tighter text-[10px]">AI Hybrid IP</p>
+                      <p className="text-[11px] opacity-60">AI 기술과 인간의 감각을 결합한 지식재산권의 진화</p>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              <div className="premium-glass p-6 rounded-3xl border border-primary/30 bg-primary/5">
-                <div className="flex items-center gap-3 mb-3">
-                  <ShieldCheck size={20} className="text-primary" />
-                  <h4 className="text-sm font-black uppercase tracking-widest text-primary">BM Patent Status</h4>
+                  </div>
                 </div>
-                <p className="text-[10px] font-medium leading-relaxed opacity-60">
-                  {lang === 'KR' 
-                    ? "현 시스템은 단순한 음원 유통을 넘어, [AI-인간 하이브리드 지식재산권(IP)의 자율적 경영 및 주권적 가치 사슬 체계]를 구축하는 비즈니스 모델(BM)로 전략적 특허 출원을 준비 중입니다. 우리는 단순한 전달자가 아닌, 창작자의 경제적 해방과 예술적 주권을 실현하는 독자적 생태계의 설계자입니다."
-                    : "Beyond simple distribution, this system is under strategic BM Patent preparation for [Autonomous Management of AI-Human Hybrid IP & Sovereign Value Chain Systems]. We are designers of a sovereign ecosystem, empowering creators with true economic liberation and artistic authority."}
-                </p>
               </div>
+              <button 
+                onClick={() => setShowVision(false)}
+                className="w-full mt-10 bg-white/5 border border-white/10 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
+              >
+                Close
+              </button>
             </div>
           </motion.div>
         )}
@@ -1564,44 +1574,88 @@ export default function AlphaWaverseEngine() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6"
+          >
+            <div className="w-full max-w-sm premium-glass p-10 rounded-[3rem] border border-white/10 shadow-2xl">
+              <div className="flex flex-col items-center gap-6 text-center">
+                <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center text-primary">
+                  <Globe size={32} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-widest mb-2">{lang === 'KR' ? "레거시 IP 연동" : "Legacy IP Link"}</h3>
+                  <p className="text-[10px] opacity-40 uppercase tracking-widest leading-relaxed">Enter ISRC to link your global assets to Alpha Waverse</p>
+                </div>
+                
+                <input 
+                  type="text" 
+                  value={importIsrc}
+                  onChange={(e) => setImportIsrc(e.target.value.toUpperCase())}
+                  placeholder="e.g. KR-107-24-00001"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-center text-sm font-black tracking-widest focus:border-primary outline-none transition-all placeholder:opacity-20"
+                />
+
+                <p className="text-[8px] font-medium opacity-40 leading-relaxed italic mt-2 px-4">
+                  * Entering a valid ISRC will trigger our Global Oracle to fetch metadata and distribution history for unified management.
+                </p>
+
+                <div className="grid grid-cols-2 gap-3 w-full mt-4">
+                  <button 
+                    onClick={() => setShowImportModal(false)}
+                    className="bg-white/5 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleImportLegacy}
+                    disabled={isSyncing || !importIsrc}
+                    className="bg-primary text-black py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_10px_30px_rgba(var(--primary-rgb),0.3)] disabled:opacity-30"
+                  >
+                    {isSyncing ? "Syncing..." : "Link Asset"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* VISION PROCLAMATION MODAL */}
+      <AnimatePresence>
+        {showVision && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6"
           >
             <div className="w-full max-w-md premium-glass p-8 rounded-[2.5rem] border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
               <div className="flex justify-between items-center mb-8">
                 <div className="flex items-center gap-3">
-                  <Download className="text-primary rotate-180" />
-                  <h3 className="text-xl font-black uppercase tracking-widest">{lang === 'KR' ? "레거시 자산 가져오기" : "Import Legacy Asset"}</h3>
+                  <TrendingUp className="text-primary" />
+                  <h3 className="text-xl font-black uppercase tracking-widest">{T.visionTitle}</h3>
                 </div>
-                <button onClick={() => setShowImportModal(false)} className="p-2 hover:bg-white/5 rounded-full">
-                  <Plus className="rotate-45" size={24} />
+                <button onClick={() => setShowVision(false)} className="p-2 hover:bg-white/5 rounded-full">
+                  <Plus className="rotate-45 opacity-40" />
                 </button>
               </div>
-
-              <div className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">ISRC Code Entry</label>
-                  <input 
-                    type="text" 
-                    value={importIsrc}
-                    onChange={(e) => setImportIsrc(e.target.value.toUpperCase())}
-                    placeholder="e.g. KR-A12-23-00001"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold tracking-widest focus:border-primary outline-none transition-all placeholder:opacity-20"
-                  />
+              <div className="space-y-6 text-sm leading-relaxed opacity-80">
+                <p className="font-bold text-primary italic">"창작자가 자신의 자산을 완전히 통제하는 '주권적 음악 경제'를 구축합니다."</p>
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0"><Zap size={14} /></div>
+                    <div>
+                      <p className="font-black uppercase tracking-tighter text-[10px]">AI Hybrid IP</p>
+                      <p className="text-[11px] opacity-60">AI 기술과 인간의 감각을 결합한 지식재산권의 진화</p>
+                    </div>
+                  </div>
                 </div>
-                
-                <p className="text-[9px] font-medium opacity-40 leading-relaxed italic">
-                  * Entering a valid ISRC will trigger our Global Oracle to fetch metadata and distribution history from major streaming platforms for unified management.
-                </p>
-
-                <button 
-                  onClick={handleImportLegacy}
-                  disabled={!importIsrc || isSyncing}
-                  className="w-full bg-primary text-black py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-2"
-                >
-                  {isSyncing ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
-                  {isSyncing ? (lang === 'KR' ? "검색 중..." : "Searching...") : (lang === 'KR' ? "자산 연결하기" : "Link Global Asset")}
-                </button>
               </div>
+              <button 
+                onClick={() => setShowVision(false)}
+                className="w-full mt-10 bg-white/5 border border-white/10 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
+              >
+                Close
+              </button>
             </div>
           </motion.div>
         )}
@@ -1622,16 +1676,7 @@ export default function AlphaWaverseEngine() {
                   <Play size={24} fill="currentColor" />
                 </div>
                 <div>
-                  {customTitles[showVideoPlayer]?.includes('/') ? (
-                    <>
-                      <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">{customTitles[showVideoPlayer].split('/')[0].trim()}</h3>
-                      <p className="text-[10px] font-bold text-primary tracking-[0.2em] uppercase">
-                        {customTitles[showVideoPlayer].split('/').slice(1).join(' x ')}
-                      </p>
-                    </>
-                  ) : (
-                    <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">{customTitles[showVideoPlayer] || "Cinematic Asset"}</h3>
-                  )}
+                  <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">{customTitles[showVideoPlayer] || "Cinematic Asset"}</h3>
                   <p className="text-[10px] font-black uppercase opacity-40 tracking-widest">Sovereign 4K Node Streaming</p>
                 </div>
               </div>
