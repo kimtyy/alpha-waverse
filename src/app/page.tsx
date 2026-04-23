@@ -6,7 +6,7 @@ import {
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward,
   Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight,
-  Video, RefreshCw
+  Video, RefreshCw, Layers
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
 
@@ -114,6 +114,17 @@ export default function AlphaWaverseEngine() {
   const [importIsrc, setImportIsrc] = useState('');
   const [legacyAssetIds, setLegacyAssetIds] = useState<string[]>([]);
 
+  // DistroKid-style Registration Modal State
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadArtist, setUploadArtist] = useState('');
+  const [uploadProducer, setUploadProducer] = useState('');
+  const [registeredFilenames, setRegisteredFilenames] = useState<Set<string>>(new Set());
+
+  const singleInputRef = useRef<HTMLInputElement>(null);
+  const batchInputRef = useRef<HTMLInputElement>(null);
+
   // IndexedDB for Persistent Audio Storage
   const saveToIndexedDB = async (id: string, file: File) => {
     return new Promise((resolve, reject) => {
@@ -168,6 +179,9 @@ export default function AlphaWaverseEngine() {
 
     const savedGenerated = localStorage.getItem('alpha_waverse_generated');
     if (savedGenerated) setGeneratedAssets(JSON.parse(savedGenerated));
+
+    const savedSigs = localStorage.getItem('alpha_waverse_registered_sigs');
+    if (savedSigs) setRegisteredFilenames(new Set(JSON.parse(savedSigs)));
   }, []);
 
   // Data Persistence: Save to LocalStorage
@@ -182,6 +196,10 @@ export default function AlphaWaverseEngine() {
   useEffect(() => {
     localStorage.setItem('alpha_waverse_generated', JSON.stringify(generatedAssets));
   }, [generatedAssets]);
+
+  useEffect(() => {
+    localStorage.setItem('alpha_waverse_registered_sigs', JSON.stringify(Array.from(registeredFilenames)));
+  }, [registeredFilenames]);
 
   useEffect(() => {
     localStorage.setItem('alpha_waverse_legacy_ids', JSON.stringify(legacyAssetIds));
@@ -277,50 +295,105 @@ export default function AlphaWaverseEngine() {
     }
   };
 
-  // Play All Logic
-  const playAll = (tracks: SearchResult[]) => {
-    if (tracks.length > 0) {
-      setPlaylist(tracks);
-      setActiveTrack(tracks[0]);
-      setIsPlaying(true);
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Filter out duplicates using filename + size as a simple signature
+    const newFiles = files.filter(f => !registeredFilenames.has(`${f.name}-${f.size}`));
+    const duplicatesCount = files.length - newFiles.length;
+
+    if (duplicatesCount > 0) {
+      alert(lang === 'KR' 
+        ? `${duplicatesCount}개의 파일은 이미 등록되어 있어 제외되었습니다.` 
+        : `${duplicatesCount} duplicate files were skipped.`);
     }
+
+    if (newFiles.length === 0) {
+      e.target.value = '';
+      return;
+    }
+
+    // Determine if it's a single upload or batch based on the input ref used or count
+    const isBatch = e.target.multiple;
+
+    if (!isBatch && newFiles.length === 1) {
+      const file = newFiles[0];
+      setUploadFile(file);
+      setUploadTitle(file.name.split('.')[0]);
+      setUploadArtist('');
+      setUploadProducer('');
+      setShowUploadModal(true);
+    } else {
+      const confirmBatch = window.confirm(lang === 'KR' 
+        ? `${newFiles.length}개의 파일을 일괄 등록하시겠습니까? (파일명이 곡 제목으로 자동 설정됩니다.)` 
+        : `Register ${newFiles.length} files in batch? (File names will be used as titles.)`);
+      
+      if (confirmBatch) {
+        setIsUploading(true);
+        setTimeout(async () => {
+          const newAssets = [];
+          const newSigs = new Set(registeredFilenames);
+
+          for (const file of newFiles) {
+            const newId = `user-asset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            const title = file.name.split('.')[0];
+            
+            try {
+              await saveToIndexedDB(newId, file);
+              const localUrl = URL.createObjectURL(file);
+              setCustomUrls(prev => ({ ...prev, [newId]: localUrl }));
+              newAssets.push(newId);
+              newSigs.add(`${file.name}-${file.size}`);
+              
+              setCustomTitles(prev => {
+                const updated = { ...prev, [newId]: title };
+                localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updated));
+                return updated;
+              });
+            } catch (err) {
+              console.error("Batch Save Failed", err);
+            }
+          }
+          
+          setRegisteredFilenames(newSigs);
+          setOwnedAssets(prev => [...newAssets, ...prev]);
+          setIsUploading(false);
+          alert(lang === 'KR' ? "대량 등록 완료! 귀하의 주권적 라이브러리가 구축되었습니다." : "Batch registration complete! Your sovereign library is built.");
+        }, 2000);
+      }
+    }
+    
+    e.target.value = '';
   };
 
-  // Mock Upload Function
-  const handleUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const title = window.prompt(lang === 'KR' ? "음악 제목과 아티스트명을 입력하세요 (예: 제목 - 가수):" : "Enter Title & Artist (e.g., Song - Artist):", file.name.split('.')[0]);
-    if (!title) return;
+  const handleFinalUpload = async () => {
+    if (!uploadFile || !uploadTitle) return;
 
     setIsUploading(true);
+    setShowUploadModal(false);
     
     setTimeout(async () => {
       const newId = `user-asset-${Date.now()}`;
-      const isVideo = file.type.startsWith('video/');
+      const isVideo = uploadFile.type.startsWith('video/');
+      const fullTitle = `${uploadTitle} / ${uploadArtist || 'Unknown'} / ${uploadProducer || 'Unknown'}`;
       
       try {
-        await saveToIndexedDB(newId, file);
-        const localUrl = URL.createObjectURL(file);
+        await saveToIndexedDB(newId, uploadFile);
+        const localUrl = URL.createObjectURL(uploadFile);
         setCustomUrls(prev => ({ ...prev, [newId]: localUrl }));
         
-        // Immediate update to state
         setOwnedAssets(prev => [newId, ...prev]);
-        const updatedTitles = { ...customTitles, [newId]: title };
+        setRegisteredFilenames(prev => new Set(prev).add(`${uploadFile.name}-${uploadFile.size}`));
+        const updatedTitles = { ...customTitles, [newId]: fullTitle };
         setCustomTitles(updatedTitles);
         localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
         
         setIsUploading(false);
 
-        // Prepare object for immediate playback
         const newAsset = {
           id: newId,
-          title: title,
+          title: fullTitle,
           type: (isVideo ? 'Video' : 'Music') as any,
           category: isVideo ? (lang === 'KR' ? '마스터 영상 (YouTube)' : 'Master Video (YouTube)') : (lang === 'KR' ? '사용자 자산' : 'User Asset'),
           isrc: `ISRC-USR-${newId.slice(-4)}`,
@@ -328,10 +401,10 @@ export default function AlphaWaverseEngine() {
           url: localUrl
         };
         
-        setActiveTrack(newAsset as any); // Set context for both
+        setActiveTrack(newAsset as any);
         if (isVideo) {
           setShowVideoPlayer(newId);
-          setIsPlaying(false); // Stop background audio
+          setIsPlaying(false);
         } else {
           setIsPlaying(true);
         }
@@ -340,10 +413,18 @@ export default function AlphaWaverseEngine() {
         alert(lang === 'KR' ? "파일 저장 중 오류가 발생했습니다." : "Error occurred while saving file.");
         setIsUploading(false);
       }
-    }, 2000);
+    }, 1500);
+  };
+  const playAll = (tracks: SearchResult[]) => {
+    if (tracks.length > 0) {
+      setPlaylist(tracks);
+      setActiveTrack(tracks[0]);
+      setIsPlaying(true);
+    }
+  };
 
-    // Reset file input
-    e.target.value = '';
+  const handleUpload = () => {
+    fileInputRef.current?.click();
   };
 
   const handleAITask = (type: 'SCORE' | 'MR') => {
@@ -368,7 +449,26 @@ export default function AlphaWaverseEngine() {
       if (type === 'SCORE') {
         setShowScoreViewer(trackId);
       } else {
-        alert(lang === 'KR' ? "보컬 제거가 완료되었습니다! 내 노드(Studio)에서 MR 자산을 확인할 수 있습니다." : "Vocal removal complete! You can find the MR asset in your Node (Studio).");
+        // Register MR as a NEW sovereign asset in the Studio
+        const mrTitle = `[MR/Instrumental] ${customTitles[trackId] || activeTrack.title}`;
+        const mrId = `mr-asset-${Date.now()}`;
+        
+        setOwnedAssets(prev => [mrId, ...prev]);
+        setCustomTitles(prev => {
+          const updated = { ...prev, [mrId]: mrTitle };
+          localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updated));
+          return updated;
+        });
+        
+        // Link to the same local URL for demonstration
+        const sourceUrl = customUrls[trackId] || activeTrack.url;
+        if (sourceUrl) {
+          setCustomUrls(prev => ({ ...prev, [mrId]: sourceUrl }));
+        }
+
+        alert(lang === 'KR' 
+          ? `✅ MR 추출 완료! '${mrTitle}'이(가) 내 스튜디오에 신규 자산으로 등록되었습니다.` 
+          : `✅ MR Extraction Complete! '${mrTitle}' has been registered in your Studio as a new asset.`);
       }
       
       setAiTaskType(null);
@@ -380,18 +480,26 @@ export default function AlphaWaverseEngine() {
     setIsSyncing(true);
     
     setTimeout(() => {
-      // Simulation: Find a track based on ISRC from our existing data or mock it
-      const existing = WAVE_QUERY_DATA.find(t => t.id.includes(importIsrc.toLowerCase()) || importIsrc.length > 5);
-      const newId = existing ? existing.id : `legacy-asset-${importIsrc}`;
+      const newId = `legacy-asset-${importIsrc}-${Date.now()}`;
+      const legacyTitle = `Global Legacy [${importIsrc}]`;
       
-      if (!ownedAssets.includes(newId)) {
-        setOwnedAssets(prev => [newId, ...prev]);
-        setLegacyAssetIds(prev => [...prev, newId]);
-      }
+      setOwnedAssets(prev => [newId, ...prev]);
+      setLegacyAssetIds(prev => [...prev, newId]);
+      
+      setCustomTitles(prev => {
+        const updated = { ...prev, [newId]: legacyTitle };
+        localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updated));
+        return updated;
+      });
       
       setIsSyncing(false);
       setShowImportModal(false);
       setImportIsrc('');
+      alert(lang === 'KR' 
+        ? "✅ 글로벌 레거시 자산 연결 성공! 이제 스튜디오에서 확인 가능합니다." 
+        : "✅ Global legacy asset linked! You can now view it in your Studio.");
+    }, 2000);
+  };
       alert(lang === 'KR' ? "레거시 자산 통합 완료! 글로벌 유통 통계가 내 노드에 연결되었습니다." : "Legacy asset integrated! Global distribution stats linked to your node.");
     }, 2500);
   };
@@ -469,12 +577,19 @@ export default function AlphaWaverseEngine() {
   const filteredResults = useMemo(() => {
     if (!debouncedSearchTerm) return [];
     const term = debouncedSearchTerm.toLowerCase();
-    return WAVE_QUERY_DATA.filter(track => 
+    
+    // Combine Global Data + User's Sovereign Assets
+    const pool = [...WAVE_QUERY_DATA, ...ownedDisplayList];
+    
+    // De-duplicate if needed (though IDs should be unique)
+    const uniquePool = Array.from(new Map(pool.map(item => [item.id, item])).values());
+
+    return uniquePool.filter(track => 
       track.title.toLowerCase().includes(term) || 
       track.category.toLowerCase().includes(term) ||
       track.isrc.toLowerCase().includes(term)
     );
-  }, [debouncedSearchTerm]);
+  }, [debouncedSearchTerm, ownedDisplayList]);
 
   return (
     <main className="h-[100dvh] w-full bg-black text-white selection:bg-primary/30 flex flex-col items-center relative overflow-hidden font-sans">
@@ -762,17 +877,25 @@ export default function AlphaWaverseEngine() {
                   <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
                     <button 
                       onClick={() => playAll(ownedDisplayList as any)}
-                      className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(var(--primary-rgb),0.3)]"
+                      className="col-span-2 flex items-center justify-center gap-3 bg-gradient-to-r from-primary to-secondary text-black px-4 py-5 rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] mb-2"
                     >
-                      <Play size={12} fill="currentColor" /> {T.playAllStudio}
+                      <Play size={16} fill="currentColor" /> {T.playAllStudio}
                     </button>
                     <button 
-                      onClick={handleUpload}
+                      onClick={() => singleInputRef.current?.click()}
                       disabled={isUploading}
                       className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-50"
                     >
                       {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                      {isUploading ? T.uploading : T.uploadAsset}
+                      {lang === 'KR' ? "자산 등록" : "Add Asset"}
+                    </button>
+                    <button 
+                      onClick={() => batchInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-primary px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 transition-all disabled:opacity-50"
+                    >
+                      {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Layers size={12} />}
+                      {lang === 'KR' ? "대량 등록" : "Batch Import"}
                     </button>
                     <button 
                       onClick={() => setShowImportModal(true)}
@@ -827,8 +950,17 @@ export default function AlphaWaverseEngine() {
                           )}
                         </div>
                         <div>
-                          <p className="text-base md:text-xl font-black tracking-tight">{item.title}</p>
-                          <div className="flex items-center gap-2 opacity-30 text-[10px] font-black uppercase tracking-widest">
+                          {item.title.includes('/') ? (
+                            <>
+                              <p className="text-base md:text-xl font-black tracking-tight">{item.title.split('/')[0].trim()}</p>
+                              <p className="text-[9px] font-bold text-primary/60 uppercase tracking-widest -mt-1">
+                                {item.title.split('/').slice(1).join(' x ')}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-base md:text-xl font-black tracking-tight">{item.title}</p>
+                          )}
+                          <div className="flex items-center gap-2 opacity-30 text-[10px] font-black uppercase tracking-widest mt-1">
                             <span className="text-primary">{item.type}</span>
                             <span className="w-1 h-1 rounded-full bg-white" />
                             <span>{'status' in item ? item.status : 'Certified'}</span>
@@ -1029,7 +1161,9 @@ export default function AlphaWaverseEngine() {
                   <h4 className="text-sm font-black uppercase tracking-widest text-primary">BM Patent Status</h4>
                 </div>
                 <p className="text-[10px] font-medium leading-relaxed opacity-60">
-                  Current System: [P2P Distributed AI-Human Hybrid Sound Asset Management & Global ISRC Proxy Engine] is under strategic internal documentation for Business Model Patent application. Your creative assets are protected by our sovereign node infrastructure.
+                  {lang === 'KR' 
+                    ? "현 시스템은 단순한 음원 유통을 넘어, [AI-인간 하이브리드 지식재산권(IP)의 자율적 경영 및 주권적 가치 사슬 체계]를 구축하는 비즈니스 모델(BM)로 전략적 특허 출원을 준비 중입니다. 우리는 단순한 전달자가 아닌, 창작자의 경제적 해방과 예술적 주권을 실현하는 독자적 생태계의 설계자입니다."
+                    : "Beyond simple distribution, this system is under strategic BM Patent preparation for [Autonomous Management of AI-Human Hybrid IP & Sovereign Value Chain Systems]. We are designers of a sovereign ecosystem, empowering creators with true economic liberation and artistic authority."}
                 </p>
               </div>
             </div>
@@ -1040,6 +1174,23 @@ export default function AlphaWaverseEngine() {
       <audio 
         ref={audioRef} 
         onEnded={handleTrackEnd}
+        className="hidden" 
+      />
+
+      <input 
+        type="file" 
+        ref={singleInputRef} 
+        onChange={onFileChange} 
+        accept="audio/*,video/*" 
+        className="hidden" 
+      />
+
+      <input 
+        type="file" 
+        ref={batchInputRef} 
+        onChange={onFileChange} 
+        multiple
+        accept="audio/*,video/*" 
         className="hidden" 
       />
 
@@ -1151,7 +1302,7 @@ export default function AlphaWaverseEngine() {
 
             <div className="flex justify-center gap-4 mt-10">
               <button 
-                onClick={() => alert("Downloading PDF...")}
+                onClick={() => alert(lang === 'KR' ? "📥 PDF 악보 다운로드 시작! 브라우저의 '다운로드' 폴더를 확인해 주세요." : "📥 Starting PDF download! Please check your browser's 'Downloads' folder.")}
                 className="bg-primary text-black px-10 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)]"
               >
                 Download PDF
@@ -1162,6 +1313,82 @@ export default function AlphaWaverseEngine() {
               >
                 Save to My Node
               </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* REGISTRATION MODAL (DISTROKID STYLE) */}
+      <AnimatePresence>
+        {showUploadModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[500] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-6"
+          >
+            <div className="w-full max-w-lg premium-glass p-8 md:p-12 rounded-[3rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)]">
+              <div className="flex justify-between items-center mb-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+                    <MusicIcon size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black uppercase tracking-widest">{lang === 'KR' ? "자산 등록 (DistroKid Std.)" : "Asset Registration"}</h3>
+                    <p className="text-[10px] font-medium opacity-40 uppercase tracking-[0.2em]">Global Distribution Standard Meta</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowUploadModal(false)} className="p-2 hover:bg-white/5 rounded-full">
+                  <Plus className="rotate-45 opacity-40" size={32} />
+                </button>
+              </div>
+
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 gap-6">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">01. {lang === 'KR' ? "곡 제목" : "Track Title"}</label>
+                    <input 
+                      type="text" 
+                      value={uploadTitle}
+                      onChange={(e) => setUploadTitle(e.target.value)}
+                      placeholder="e.g. My Infinite Wave"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold tracking-tight focus:border-primary outline-none transition-all placeholder:opacity-20"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">02. {lang === 'KR' ? "아티스트 / 사이버가수" : "Artist / Cyber Singer"}</label>
+                    <input 
+                      type="text" 
+                      value={uploadArtist}
+                      onChange={(e) => setUploadArtist(e.target.value)}
+                      placeholder="e.g. Haerim (AI)"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold tracking-tight focus:border-primary outline-none transition-all placeholder:opacity-20"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">03. {lang === 'KR' ? "프로듀서 / 실제 제작자" : "Producer / Creator"}</label>
+                    <input 
+                      type="text" 
+                      value={uploadProducer}
+                      onChange={(e) => setUploadProducer(e.target.value)}
+                      placeholder="e.g. K.Kim"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold tracking-tight focus:border-primary outline-none transition-all placeholder:opacity-20"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-6">
+                  <button 
+                    onClick={handleFinalUpload}
+                    className="w-full bg-primary text-black py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] flex items-center justify-center gap-3"
+                  >
+                    <Globe size={18} />
+                    {lang === 'KR' ? "자산 등록 및 주권 확보" : "Register & Secure Sovereignty"}
+                  </button>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
@@ -1232,8 +1459,17 @@ export default function AlphaWaverseEngine() {
                   <Play size={24} fill="currentColor" />
                 </div>
                 <div>
-                  <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">{customTitles[showVideoPlayer] || "Cinematic Asset"}</h3>
-                  <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Sovereign 4K Node Streaming</p>
+                  {customTitles[showVideoPlayer]?.includes('/') ? (
+                    <>
+                      <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">{customTitles[showVideoPlayer].split('/')[0].trim()}</h3>
+                      <p className="text-[10px] font-bold text-primary tracking-[0.2em] uppercase">
+                        {customTitles[showVideoPlayer].split('/').slice(1).join(' x ')}
+                      </p>
+                    </>
+                  ) : (
+                    <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">{customTitles[showVideoPlayer] || "Cinematic Asset"}</h3>
+                  )}
+                  <p className="text-[10px] font-black uppercase opacity-40 tracking-widest">Sovereign 4K Node Streaming</p>
                 </div>
               </div>
               <button 
@@ -1276,7 +1512,7 @@ export default function AlphaWaverseEngine() {
               </div>
               <button 
                 onClick={() => {
-                  alert(lang === 'KR' ? "🎉 마스터 NFT 민팅 완료! 부장님의 주권적 자산이 블록체인에 공식 등록되었습니다." : "🎉 Master NFT Minted! Your sovereign asset is now officially registered on-chain.");
+                  alert(lang === 'KR' ? "🎉 마스터 NFT 민팅 완료! 귀하의 주권적 자산이 블록체인에 공식 등록되었습니다." : "🎉 Master NFT Minted! Your sovereign asset is now officially registered on-chain.");
                   setShowVideoPlayer(null); // Close the player as the final step
                 }}
                 className="bg-primary text-black px-10 py-4 rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)]"
