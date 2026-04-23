@@ -466,6 +466,16 @@ export default function AlphaWaverseEngine() {
     });
   }, [ownedAssets, customTitles, customUrls, lang]);
 
+  const filteredResults = useMemo(() => {
+    if (!debouncedSearchTerm) return [];
+    const term = debouncedSearchTerm.toLowerCase();
+    return WAVE_QUERY_DATA.filter(track => 
+      track.title.toLowerCase().includes(term) || 
+      track.category.toLowerCase().includes(term) ||
+      track.isrc.toLowerCase().includes(term)
+    );
+  }, [debouncedSearchTerm]);
+
   return (
     <main className="h-[100dvh] w-full bg-black text-white selection:bg-primary/30 flex flex-col items-center relative overflow-hidden font-sans">
       
