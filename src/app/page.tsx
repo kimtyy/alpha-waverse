@@ -120,6 +120,7 @@ export default function AlphaWaverseEngine() {
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadArtist, setUploadArtist] = useState('');
   const [uploadProducer, setUploadProducer] = useState('');
+  const [customProducers, setCustomProducers] = useState<Record<string, string>>({});
   const [registeredFilenames, setRegisteredFilenames] = useState<Set<string>>(new Set());
 
   const singleInputRef = useRef<HTMLInputElement>(null);
@@ -182,6 +183,9 @@ export default function AlphaWaverseEngine() {
 
     const savedSigs = localStorage.getItem('alpha_waverse_registered_sigs');
     if (savedSigs) setRegisteredFilenames(new Set(JSON.parse(savedSigs)));
+
+    const savedProducers = localStorage.getItem('alpha_waverse_custom_producers');
+    if (savedProducers) setCustomProducers(JSON.parse(savedProducers));
   }, []);
 
   // Data Persistence: Save to LocalStorage
@@ -389,6 +393,12 @@ export default function AlphaWaverseEngine() {
         setCustomTitles(updatedTitles);
         localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
         
+        if (uploadProducer) {
+          const updatedProducers = { ...customProducers, [newId]: uploadProducer };
+          setCustomProducers(updatedProducers);
+          localStorage.setItem('alpha_waverse_custom_producers', JSON.stringify(updatedProducers));
+        }
+        
         setIsUploading(false);
 
         const newAsset = {
@@ -550,6 +560,8 @@ export default function AlphaWaverseEngine() {
   useEffect(() => {
     const saved = localStorage.getItem('alpha_waverse_custom_titles');
     if (saved) setCustomTitles(JSON.parse(saved));
+    const savedProducers = localStorage.getItem('alpha_waverse_custom_producers');
+    if (savedProducers) setCustomProducers(JSON.parse(savedProducers));
   }, []);
 
   const ownedDisplayList = useMemo(() => {
@@ -569,13 +581,15 @@ export default function AlphaWaverseEngine() {
             ? (lang === 'KR' ? 'AI 하이브리드 MR' : 'AI Hybrid MR')
             : id.startsWith('legacy-asset-')
               ? (lang === 'KR' ? '레거시 IP 통합 자산' : 'Legacy IP Integrated Asset')
-              : (lang === 'KR' ? '주권적 마스터 자산' : 'Sovereign Master Asset'),
+              : customProducers[id] 
+                ? (lang === 'KR' ? `${customProducers[id]}의 자산` : `Asset of ${customProducers[id]}`)
+                : (lang === 'KR' ? '등록자의 자산' : "Registrant's Asset"),
         isrc: id.startsWith('legacy-asset-') ? id.split('-')[2] : `KR-AWV-26-${id.slice(-5).toUpperCase()}`,
         status: 'Certified',
         url: customUrls[id] || '' 
       };
     });
-  }, [ownedAssets, customTitles, customUrls, lang]);
+  }, [ownedAssets, customTitles, customUrls, customProducers, lang]);
 
   const filteredResults = useMemo(() => {
     if (!debouncedSearchTerm) return [];
