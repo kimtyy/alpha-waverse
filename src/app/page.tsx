@@ -814,7 +814,11 @@ export default function AlphaWaverseEngine() {
   }, [ownedDisplayList, studioSearch]);
 
   const filteredVaultList = useMemo(() => {
-    const vaultPool = WAVE_QUERY_DATA.filter(item => likedTracks.includes(item.id));
+    // Combine Global Data + Owned Assets for the Vault pool
+    const pool = [...WAVE_QUERY_DATA, ...ownedDisplayList];
+    const uniquePool = Array.from(new Map(pool.map(item => [item.id, item])).values());
+    
+    const vaultPool = uniquePool.filter(item => likedTracks.includes(item.id));
     if (!vaultSearch) return vaultPool;
     const term = vaultSearch.toLowerCase();
     return vaultPool.filter(t => 
@@ -822,7 +826,7 @@ export default function AlphaWaverseEngine() {
       t.category.toLowerCase().includes(term) ||
       t.isrc.toLowerCase().includes(term)
     );
-  }, [likedTracks, vaultSearch]);
+  }, [likedTracks, vaultSearch, ownedDisplayList]);
 
   const toggleSelection = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
