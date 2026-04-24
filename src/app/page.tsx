@@ -939,19 +939,38 @@ export default function AlphaWaverseEngine() {
                   </motion.h1>
                 )}
                 
-                <div className="relative w-full max-w-2xl group px-4">
+                <div className="relative w-full max-w-sm group px-4">
                   <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity" />
-                  <div className="relative flex items-center bg-white/[0.03] border-b border-white/10 focus-within:border-primary transition-all">
-                    <Search className="absolute left-4 text-white/20 group-focus-within:text-primary w-5 h-5 md:w-6 md:h-6" />
+                  <div className="relative premium-glass rounded-2xl border border-white/10 flex items-center px-4 py-3 gap-3 shadow-2xl">
+                    <Search size={18} className="text-white/20 group-focus-within:text-primary transition-colors" />
                     <input 
                       type="text" 
                       placeholder={T.placeholder} 
-                      className="w-full bg-transparent py-4 md:py-8 px-12 md:px-14 text-lg md:text-3xl font-medium focus:outline-none placeholder:text-white/5 tracking-tighter text-center"
+                      className="bg-transparent flex-1 outline-none text-sm font-bold tracking-tight text-white placeholder:text-white/10"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
+                    {search && (
+                      <button onClick={() => setSearch('')} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+                        <X size={14} className="text-white/40" />
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {/* SEARCH TABS (YTM Style) */}
+                {search && (
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar w-full max-w-sm justify-center py-1">
+                    {['ALL', 'SONGS', 'ARTISTS', 'ALBUMS'].map((tab) => (
+                      <button 
+                        key={tab}
+                        className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${tab === 'ALL' ? 'bg-white text-black shadow-lg scale-105' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </motion.div>
 
               <AnimatePresence>
@@ -974,7 +993,7 @@ export default function AlphaWaverseEngine() {
                       {WAVE_QUERY_DATA.slice(0, 5).map((item) => (
                         <div 
                           key={`rec-${item.id}`}
-                          onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.slice(0, 5)); setIsPlaying(true); }}
+                          onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.slice(0, 5)); setIsPlaying(true); setIsPlayerExpanded(true); }}
                           className="min-w-[200px] md:min-w-[280px] premium-glass p-5 rounded-3xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden"
                         >
                           <div className="absolute top-0 right-0 p-3 flex flex-col items-end gap-1">
@@ -1015,25 +1034,34 @@ export default function AlphaWaverseEngine() {
                         filteredResults.map((result) => (
                           <div 
                             key={result.id}
-                            onClick={() => { setActiveTrack(result); setPlaylist(filteredResults); }}
-                            className={`premium-glass p-5 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer group transition-all ${activeTrack?.id === result.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5'}`}
+                            onClick={() => { setActiveTrack(result); setPlaylist(filteredResults); setIsPlaying(true); setIsPlayerExpanded(true); }}
+                            className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer group transition-all ${activeTrack?.id === result.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5'}`}
                           >
-                            <div className="flex items-center gap-4">
-                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${activeTrack?.id === result.id ? 'bg-primary text-black' : 'bg-primary/10 text-primary group-hover:scale-105'}`}>
-                                {activeTrack?.id === result.id ? <Activity size={20} className="animate-pulse" /> : <MusicIcon size={20} />}
+                            <div className="flex items-center gap-4 flex-1 min-w-0">
+                              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform">
+                                {activeTrack?.id === result.id && isPlaying ? (
+                                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                                    <div className="flex gap-1 items-end h-4">
+                                      <motion.div animate={{ height: [4, 12, 4] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-1 bg-primary rounded-full" />
+                                      <motion.div animate={{ height: [8, 4, 8] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1 bg-primary rounded-full" />
+                                      <motion.div animate={{ height: [4, 10, 4] }} transition={{ repeat: Infinity, duration: 0.4 }} className="w-1 bg-primary rounded-full" />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <MusicIcon size={20} className="group-hover:text-primary transition-colors" />
+                                )}
                               </div>
-                              <div>
-                                <h3 className="font-bold text-base md:text-xl tracking-tight">{result.title}</h3>
-                                <div className="flex items-center gap-2 text-[8px] font-black uppercase opacity-40">
-                                  <span className="text-primary">{result.category}</span>
-                                  <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                                  <span>{result.isrc}</span>
-                                </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-sm truncate tracking-tight group-hover:text-primary transition-colors">{result.title}</h3>
+                                <p className="text-[10px] font-medium text-white/40 truncate uppercase tracking-wider">{result.category} • {result.isrc}</p>
                               </div>
                             </div>
-                            <button onClick={(e) => toggleLike(result.id, e)} className={`p-2 transition-all ${likedTracks.includes(result.id) ? 'text-red-500 scale-110' : 'text-white/10 hover:text-white'}`}>
-                              <Heart size={20} fill={likedTracks.includes(result.id) ? "currentColor" : "none"} />
-                            </button>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={(e) => toggleLike(result.id, e)} className={`p-2 transition-all ${likedTracks.includes(result.id) ? 'text-red-500' : 'text-white/20 hover:text-red-500'}`}>
+                                <Heart size={16} fill={likedTracks.includes(result.id) ? "currentColor" : "none"} />
+                              </button>
+                              <button className="p-2 text-white/40 hover:text-white"><MoreVertical size={16} /></button>
+                            </div>
                           </div>
                         ))
                       ) : (
@@ -1113,7 +1141,7 @@ export default function AlphaWaverseEngine() {
                 {filteredVaultList.map(item => (
                   <div 
                     key={item.id} 
-                    onClick={() => { setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); }} 
+                    onClick={() => { setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); }} 
                     className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer transition-all ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-white/5 group'}`}
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -1375,7 +1403,7 @@ export default function AlphaWaverseEngine() {
                 {filteredOwnedList.map(item => (
                   <div key={item.id} className="flex flex-col gap-2">
                     <div 
-                      onClick={() => { setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); }} 
+                      onClick={() => { setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); }} 
                       className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5 group'}`}
                     >
                       <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -1535,41 +1563,47 @@ export default function AlphaWaverseEngine() {
             exit={{ y: 100, opacity: 0 }}
             className="fixed bottom-0 left-0 right-0 z-[100] px-4 pointer-events-none"
           >
-            <div className="max-w-2xl mx-auto premium-glass p-3 rounded-2xl border border-primary/40 pointer-events-auto flex items-center gap-4 shadow-[0_-20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden group">
-              {/* Progress Bar (Subtle HUD version) */}
-              <div className="absolute bottom-0 left-0 h-[2px] bg-primary/20 w-full overflow-hidden">
+            <div className="max-w-2xl mx-auto premium-glass bg-black/40 backdrop-blur-3xl p-2.5 rounded-2xl border border-white/10 pointer-events-auto flex items-center gap-3 shadow-[0_-20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden group">
+              {/* Progress Bar (HUD version) */}
+              <div className="absolute bottom-0 left-0 h-[1.5px] bg-white/5 w-full">
                 <motion.div 
-                  className="h-full bg-primary"
+                  className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.8)]"
                   style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
                 />
               </div>
 
               <div 
                 onClick={() => setIsPlayerExpanded(true)}
-                className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary overflow-hidden relative cursor-pointer group-hover:scale-105 transition-all"
+                className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/20 overflow-hidden relative cursor-pointer group-hover:scale-105 transition-all"
               >
-                <MusicIcon size={24} />
-                <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 1 }} className="absolute inset-0 bg-primary/20 blur-md rounded-full" />
+                <MusicIcon size={18} />
+                {isPlaying && (
+                  <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                    <div className="flex gap-0.5 items-end h-3">
+                      <motion.div animate={{ height: [3, 8, 3] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-0.5 bg-primary rounded-full" />
+                      <motion.div animate={{ height: [6, 3, 6] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-0.5 bg-primary rounded-full" />
+                      <motion.div animate={{ height: [3, 7, 3] }} transition={{ repeat: Infinity, duration: 0.4 }} className="w-0.5 bg-primary rounded-full" />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex-1 overflow-hidden cursor-pointer" onClick={() => setIsPlayerExpanded(true)}>
-                <h4 className="text-[10px] md:text-xs font-black truncate tracking-tighter uppercase">{activeTrack.title}</h4>
-                <div className="flex items-center gap-2 text-[7px] font-black opacity-50 uppercase tracking-widest">
-                  <span className="text-primary">{activeTrack.isrc}</span>
-                  <span className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
-                  <span>{T.streaming}</span>
+                <h4 className="text-[11px] font-black truncate tracking-tight text-white uppercase leading-none mb-1">{activeTrack.title}</h4>
+                <div className="flex items-center gap-2 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em]">
+                  <span className="text-primary">{activeTrack.category}</span>
+                  <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
+                  <span>{activeTrack.isrc}</span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 border-l border-white/10 pl-3 ml-1">
-                  <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 text-white hover:text-primary transition-colors hover:scale-110 active:scale-95">
-                    {isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
-                  </button>
-                  <button onClick={handleTrackEnd} className="p-2 text-white/40 hover:text-white transition-colors">
-                    <SkipForward size={20} />
-                  </button>
-                </div>
+              <div className="flex items-center gap-1 pr-1">
+                <button onClick={() => setIsPlaying(!isPlaying)} className="p-2.5 text-white hover:text-primary transition-all active:scale-90">
+                  {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+                </button>
+                <button onClick={handleTrackEnd} className="p-2.5 text-white/40 hover:text-white transition-colors">
+                  <SkipForward size={20} fill="currentColor" />
+                </button>
               </div>
             </div>
           </motion.div>
@@ -1592,81 +1626,78 @@ export default function AlphaWaverseEngine() {
               <div className="absolute bottom-1/4 right-1/4 w-[50%] h-[50%] bg-secondary/15 blur-[180px] rounded-full" />
             </div>
 
-            <div className="relative z-10 flex flex-col h-full w-full max-w-lg mx-auto pt-14 px-8 pb-10">
-              {/* TOP BAR */}
-              <div className="flex justify-between items-center mb-8">
-                <button onClick={() => setIsPlayerExpanded(false)} className="p-2 text-white/80 hover:text-white transition-all">
-                  <ChevronRight size={28} className="rotate-90" />
+            <div className="relative z-10 flex flex-col h-full w-full max-w-lg mx-auto pt-6 px-8 pb-10">
+              {/* TOP BAR - ULTRA MINIMAL */}
+              <div className="flex justify-center items-center mb-10">
+                <button onClick={() => setIsPlayerExpanded(false)} className="p-4 text-white/20 hover:text-white transition-all group">
+                  <div className="w-12 h-1 bg-white/20 rounded-full group-hover:bg-white/40 transition-colors" />
                 </button>
-                <div className="flex flex-col items-center">
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 leading-none mb-1">{T.streaming}</p>
-                  <p className="text-[8px] font-black uppercase text-primary tracking-widest leading-none">{activeTrack.category}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="p-2 text-white/80"><Activity size={22} /></button>
-                  <button className="p-2 text-white/80"><Plus className="rotate-45" size={24} /></button>
-                </div>
               </div>
 
-              {/* ALBUM ART AREA */}
-              <div className="flex-1 flex flex-col items-center justify-center mb-10">
+              {/* MAIN CONTENT - VISUAL FOCUS */}
+              <div className="flex-1 flex flex-col items-center justify-center mb-12">
                 <motion.div 
-                  layoutId={`art-${activeTrack.id}`}
-                  className="w-full aspect-square rounded-[2rem] bg-gradient-to-br from-white/10 to-white/5 border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.6)] flex items-center justify-center relative overflow-hidden"
+                  layoutId="player-art"
+                  className="w-full aspect-square max-w-[320px] premium-glass rounded-[2.5rem] border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative overflow-hidden group"
                 >
-                  <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                    <div className="w-[80%] h-[80%] rounded-full border-[20px] border-white" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20 animate-pulse" />
+                  <div className="absolute inset-0 flex items-center justify-center text-white/10">
+                    <MusicIcon size={120} strokeWidth={0.5} />
                   </div>
-                  <MusicIcon size={120} className="text-white/20 relative z-10" />
                   
-                  {/* CSS Visualizer (Subtle Overlay) */}
-                  <div className="absolute bottom-0 left-0 right-0 h-16 flex items-end justify-center gap-1.5 px-8 pb-6">
-                    {Array.from({ length: 15 }).map((_, i) => (
-                      <motion.div 
-                        key={i}
-                        animate={isPlaying ? { height: [4, Math.random() * 40 + 10, 4] } : { height: 2 }}
-                        transition={{ repeat: Infinity, duration: 0.6 + Math.random() * 0.4, delay: i * 0.04 }}
-                        className="w-1.5 bg-primary/40 rounded-full"
-                      />
-                    ))}
-                  </div>
+                  {/* Dynamic Glow Overlay */}
+                  <motion.div 
+                    animate={{ scale: isPlaying ? [1, 1.1, 1] : 1, opacity: isPlaying ? [0.3, 0.6, 0.3] : 0.3 }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"
+                  />
                 </motion.div>
-              </div>
 
-              {/* TRACK INFO */}
-              <div className="flex items-center justify-between mb-10">
-                <div className="flex-1 overflow-hidden pr-6">
-                  <h2 className="text-3xl font-black tracking-tighter truncate mb-1">{activeTrack.title}</h2>
-                  <p className="text-base font-bold opacity-60 text-primary/80 truncate">
-                    {activeTrack.title.includes('/') ? activeTrack.title.split('/')[1].trim() : "Unknown Artist"}
-                  </p>
+                <div className="mt-12 text-center w-full">
+                  <motion.h2 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    className="text-2xl md:text-3xl font-black tracking-tight text-white mb-2 leading-tight px-4"
+                  >
+                    {activeTrack.title.includes('/') ? activeTrack.title.split('/')[0].trim() : activeTrack.title}
+                  </motion.h2>
+                  <motion.p 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-[12px] font-bold text-primary uppercase tracking-[0.3em] opacity-60"
+                  >
+                    {activeTrack.title.includes('/') ? activeTrack.title.split('/').slice(1).join(' x ') : (customProducers[activeTrack.id] || "ALPHA WAVVERSE")}
+                  </motion.p>
                 </div>
-                <button 
-                  onClick={() => toggleLike(activeTrack.id)}
-                  className={`p-3 rounded-2xl transition-all ${likedTracks.includes(activeTrack.id) ? 'bg-red-500/10 text-red-500' : 'bg-white/5 text-white/20'}`}
-                >
-                  <Heart size={24} fill={likedTracks.includes(activeTrack.id) ? "currentColor" : "none"} />
-                </button>
               </div>
 
-              {/* PROGRESS BAR & CONTROLS */}
-              <div className="space-y-10">
-                {/* Scrubber */}
-                <div className="space-y-3">
-                  <div className="h-1 bg-white/10 rounded-full relative cursor-pointer group"
-                       onClick={(e) => {
-                         const rect = e.currentTarget.getBoundingClientRect();
-                         const pos = (e.clientX - rect.left) / rect.width;
-                         if (audioRef.current) audioRef.current.currentTime = pos * duration;
-                       }}>
+              {/* SIMPLIFIED CONTROLS - ZEN FOCUS */}
+              <div className="mb-12 space-y-8">
+                {/* Visualizer (CSS Bars) */}
+                <div className="flex items-end justify-center gap-1.5 h-12">
+                  {[...Array(12)].map((_, i) => (
                     <motion.div 
-                      className="absolute inset-y-0 left-0 bg-white rounded-full"
+                      key={i}
+                      animate={{ 
+                        height: isPlaying ? [10, 40, 15, 30, 10][i % 5] : 4,
+                        opacity: isPlaying ? [0.4, 1, 0.4] : 0.2
+                      }}
+                      transition={{ repeat: Infinity, duration: 0.5 + (i * 0.1), ease: "easeInOut" }}
+                      className="w-1.5 bg-primary rounded-full"
+                    />
+                  ))}
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-3">
+                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden relative group cursor-pointer">
+                    <motion.div 
+                      className="h-full bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.8)]"
                       style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
                     />
-                    <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-xl" 
-                         style={{ left: `${(currentTime / (duration || 1)) * 100}%`, marginLeft: '-8px' }} />
                   </div>
-                  <div className="flex justify-between text-[10px] font-black uppercase opacity-40 tracking-widest">
+                  <div className="flex justify-between text-[8px] font-black text-white/20 uppercase tracking-widest">
                     <span>{Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}</span>
                     <span>{Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}</span>
                   </div>
