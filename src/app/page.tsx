@@ -112,6 +112,9 @@ export default function AlphaWaverseEngine() {
   const [editArtist, setEditArtist] = useState('');
   const [editProducer, setEditProducer] = useState('');
 
+  // Default Settings for Fast Registration
+  const [defaultProducer, setDefaultProducer] = useState('Alpha Owner');
+
   // Batch Editing State
   const [showBatchEditModal, setShowBatchEditModal] = useState(false);
   const [batchArtist, setBatchArtist] = useState('');
@@ -303,6 +306,9 @@ export default function AlphaWaverseEngine() {
     const savedLegacy = localStorage.getItem('alpha_waverse_legacy_ids');
     if (savedLegacy) setLegacyAssetIds(JSON.parse(savedLegacy));
 
+    const savedProducer = localStorage.getItem('alpha_waverse_default_producer');
+    if (savedProducer) setDefaultProducer(savedProducer);
+
     // Load custom URLs from IndexedDB
     const loadAllCustomUrls = async () => {
       const savedOwned = localStorage.getItem('alpha_waverse_owned');
@@ -389,6 +395,41 @@ export default function AlphaWaverseEngine() {
     }
   };
 
+  // Smart Filename Parser
+  const parseFilename = (filename: string) => {
+    // Remove extension
+    const name = filename.replace(/\.[^/.]+$/, "");
+    
+    // Pattern 1: Artist - Title or Artist ~ Title
+    const separators = [' - ', ' ~ ', ' _ ', '-', '~', '_'];
+    for (const sep of separators) {
+      if (name.includes(sep)) {
+        const parts = name.split(sep);
+        if (parts.length >= 2) {
+          return {
+            artist: parts[0].trim(),
+            title: parts.slice(1).join(sep).trim()
+          };
+        }
+      }
+    }
+
+    // Pattern 2: Title (Artist) or Title [Artist]
+    const bracketMatches = name.match(/(.+?)\s*[\(\[](.+?)[\)\]]/);
+    if (bracketMatches) {
+      return {
+        title: bracketMatches[1].trim(),
+        artist: bracketMatches[2].trim()
+      };
+    }
+
+    // Default: Entire name as title
+    return {
+      title: name,
+      artist: "Unknown"
+    };
+  };
+
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -422,9 +463,9 @@ export default function AlphaWaverseEngine() {
         const newId = `user-asset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const isVideo = file.type.startsWith('video/');
         
-        // Initial title from filename
-        const baseTitle = file.name.split('.')[0];
-        const fullTitle = `${baseTitle} / Unknown / OWNER`;
+        // Smart Parsing
+        const { title, artist } = parseFilename(file.name);
+        const fullTitle = `${title} / ${artist} / ${defaultProducer}`;
         
         try {
           await saveToIndexedDB(newId, file);
@@ -434,7 +475,7 @@ export default function AlphaWaverseEngine() {
           newSigs.add(`${file.name}-${file.size}`);
           
           updatedTitles[newId] = fullTitle;
-          updatedProducers[newId] = "OWNER";
+          updatedProducers[newId] = defaultProducer;
         } catch (err) {
           console.error("Fast Registration Failed", err);
         }
@@ -1171,6 +1212,24 @@ export default function AlphaWaverseEngine() {
                     multiple
                     className="hidden" 
                   />
+                  <div className="w-full max-w-sm flex items-center gap-3 px-4 py-3 bg-white/5 rounded-2xl border border-white/5 mb-2">
+                    <div className="flex flex-col items-start gap-0.5">
+                      <span className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">Default Producer</span>
+                      <input 
+                        type="text"
+                        value={defaultProducer}
+                        onChange={(e) => {
+                          setDefaultProducer(e.target.value);
+                          localStorage.setItem('alpha_waverse_default_producer', e.target.value);
+                        }}
+                        className="bg-transparent text-[10px] font-black text-primary uppercase tracking-widest outline-none focus:border-b border-primary/30 w-32"
+                      />
+                    </div>
+                    <div className="flex-1 text-right">
+                      <p className="text-[7px] font-bold opacity-20 leading-tight uppercase">Settings apply to new uploads</p>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
                     <button 
                       onClick={() => singleInputRef.current?.click()}
