@@ -551,29 +551,6 @@ export default function AlphaWaverseEngine() {
     }, 3500);
   };
 
-  const handleImportLegacy = () => {
-    if (!importIsrc) return;
-    setIsSyncing(true);
-    setShowImportModal(false);
-    
-    setTimeout(() => {
-      // Find matching ISRC in the simulation data
-      const found = WAVE_QUERY_DATA.find(t => t.isrc.includes(importIsrc));
-      if (found) {
-        if (!ownedAssets.includes(found.id)) {
-          setOwnedAssets(prev => [found.id, ...prev]);
-          setLegacyAssetIds(prev => [...prev, found.id]);
-          alert(lang === 'KR' ? "✅ 글로벌 레거시 자산 연결 성공!" : "✅ Global legacy asset linked!");
-        } else {
-          alert(lang === 'KR' ? "이미 등록된 자산입니다." : "Already registered.");
-        }
-      } else {
-        alert(lang === 'KR' ? "해당 ISRC를 찾을 수 없습니다." : "ISRC not found.");
-      }
-      setIsSyncing(false);
-      setImportIsrc('');
-    }, 2000);
-  };
 
   const triggerSync = () => {
     setIsSyncing(true);
