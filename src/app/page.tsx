@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
-  Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward,
+  Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward, SkipBack,
   Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight,
   Video, RefreshCw, Layers
 } from 'lucide-react';
@@ -1659,7 +1659,7 @@ export default function AlphaWaverseEngine() {
                     animate={{ y: 0, opacity: 1 }}
                     className="text-2xl md:text-3xl font-black tracking-tight text-white mb-2 leading-tight px-4"
                   >
-                    {activeTrack.title.includes('/') ? activeTrack.title.split('/')[0].trim() : activeTrack.title}
+                    {activeTrack?.title?.includes('/') ? activeTrack.title.split('/')[0].trim() : (activeTrack?.title || "Unknown Track")}
                   </motion.h2>
                   <motion.p 
                     initial={{ y: 20, opacity: 0 }}
@@ -1667,7 +1667,7 @@ export default function AlphaWaverseEngine() {
                     transition={{ delay: 0.1 }}
                     className="text-[12px] font-bold text-primary uppercase tracking-[0.3em] opacity-60"
                   >
-                    {activeTrack.title.includes('/') ? activeTrack.title.split('/').slice(1).join(' x ') : (customProducers[activeTrack.id] || "ALPHA WAVVERSE")}
+                    {activeTrack?.title?.includes('/') ? activeTrack.title.split('/').slice(1).join(' x ') : (customProducers[activeTrack?.id || ''] || "ALPHA WAVVERSE")}
                   </motion.p>
                 </div>
               </div>
