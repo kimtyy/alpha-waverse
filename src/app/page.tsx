@@ -1073,6 +1073,18 @@ export default function AlphaWaverseEngine() {
                 </div>
               </div>
 
+              {/* VAULT TABS (YTM Style) */}
+              <div className="flex items-center gap-2 px-4 mb-6 overflow-x-auto no-scrollbar py-1">
+                {['PLAYLISTS', 'ALBUMS', 'ARTISTS'].map((tab) => (
+                  <button 
+                    key={tab}
+                    className={`px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${tab === 'PLAYLISTS' ? 'bg-white text-black shadow-lg scale-105' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
               {/* VAULT LOCAL SEARCH & SELECT ALL */}
               <div className="px-2 mb-6 space-y-4">
                 <div className="relative group">
@@ -1102,26 +1114,39 @@ export default function AlphaWaverseEngine() {
                   <div 
                     key={item.id} 
                     onClick={() => { setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); }} 
-                    className={`premium-glass p-5 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer transition-all ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-red-500/5 group'}`}
+                    className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer transition-all ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-white/5 group'}`}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div 
                         onClick={(e) => toggleSelection(item.id, e)}
-                        className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${selectedTrackIds.includes(item.id) ? 'bg-red-500 border-red-500' : 'border-white/20 hover:border-red-500'}`}
+                        className={`w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${selectedTrackIds.includes(item.id) ? 'bg-red-500 border-red-500' : 'border-white/10 hover:border-red-500'}`}
                       >
-                        {selectedTrackIds.includes(item.id) && <Check size={14} className="text-white" />}
+                        {selectedTrackIds.includes(item.id) && <Check size={12} className="text-white" />}
                       </div>
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${activeTrack?.id === item.id ? 'bg-red-500 text-white' : 'bg-red-500/10 text-red-500 group-hover:scale-105'}`}>
-                        {activeTrack?.id === item.id && isPlaying ? <Activity size={18} className="animate-pulse" /> : <Play size={16} fill="currentColor" />}
+                      <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform">
+                        {activeTrack?.id === item.id && isPlaying ? (
+                          <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
+                            <div className="flex gap-1 items-end h-4">
+                              <motion.div animate={{ height: [4, 12, 4] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-1 bg-red-500 rounded-full" />
+                              <motion.div animate={{ height: [8, 4, 8] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1 bg-red-500 rounded-full" />
+                              <motion.div animate={{ height: [4, 10, 4] }} transition={{ repeat: Infinity, duration: 0.4 }} className="w-1 bg-red-500 rounded-full" />
+                            </div>
+                          </div>
+                        ) : (
+                          <MusicIcon size={20} />
+                        )}
                       </div>
-                      <div>
-                        <p className="font-bold text-sm md:text-base tracking-tight">{item.title}</p>
-                        <p className="text-[7px] font-black opacity-30 uppercase tracking-widest">{item.isrc}</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold text-white truncate mb-0.5 tracking-tight group-hover:text-red-500 transition-colors">{item.title}</h3>
+                        <p className="text-[10px] font-medium text-white/40 truncate uppercase tracking-wider">{item.category} • {item.isrc}</p>
                       </div>
                     </div>
-                    <button onClick={(e) => removeFromVault(item.id, e)} className="text-white/20 hover:text-red-500 transition-colors p-2">
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={(e) => removeFromVault(item.id, e)} className="p-2 text-white/20 hover:text-red-500 transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                      <button className="p-2 text-white/40 hover:text-white"><MoreVertical size={16} /></button>
+                    </div>
                   </div>
                 ))}
                 {likedTracks.length === 0 && (
@@ -1149,6 +1174,20 @@ export default function AlphaWaverseEngine() {
                       </button>
                     </div>
                   </motion.div>
+                )}
+
+                {/* SHUFFLE ALL FAB (YTM Style) */}
+                {selectedTrackIds.length === 0 && (view === 'NODE' || view === 'LIKES') && (
+                  <motion.button 
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    onClick={() => playSelected(view === 'NODE' ? filteredOwnedList : filteredVaultList)}
+                    className="fixed bottom-32 right-6 z-[120] bg-white text-black px-6 py-4 rounded-full shadow-[0_15px_30px_rgba(0,0,0,0.4)] flex items-center gap-3 active:scale-90 transition-transform group"
+                  >
+                    <Shuffle size={20} className="group-hover:rotate-12 transition-transform" />
+                    <span className="text-[12px] font-black uppercase tracking-widest">{lang === 'KR' ? "모두 셔플" : "Shuffle All"}</span>
+                  </motion.button>
                 )}
               </AnimatePresence>
             </motion.div>
@@ -1199,6 +1238,18 @@ export default function AlphaWaverseEngine() {
                   </div>
                   <ChevronRight size={16} className="text-primary group-hover:translate-x-1 transition-transform" />
                 </button>
+
+                {/* STUDIO TABS (YTM Style) */}
+                <div className="flex items-center gap-2 px-4 mt-6 mb-2 overflow-x-auto no-scrollbar py-1 w-full max-w-sm justify-center">
+                  {['ALL', 'ALBUMS', 'ARTISTS'].map((tab) => (
+                    <button 
+                      key={tab}
+                      className={`px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${tab === 'ALL' ? 'bg-white text-black shadow-lg scale-105' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
 
                 <div className="flex flex-col items-center gap-4 w-full">
                   <input 
@@ -1325,74 +1376,51 @@ export default function AlphaWaverseEngine() {
                   <div key={item.id} className="flex flex-col gap-2">
                     <div 
                       onClick={() => { setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); }} 
-                      className={`premium-glass p-5 rounded-3xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-primary/5 group'}`}
+                      className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5 group'}`}
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div 
                           onClick={(e) => toggleSelection(item.id, e)}
-                          className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${selectedTrackIds.includes(item.id) ? 'bg-primary border-primary' : 'border-white/20 hover:border-primary'}`}
+                          className={`w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${selectedTrackIds.includes(item.id) ? 'bg-primary border-primary' : 'border-white/10 hover:border-primary'}`}
                         >
-                          {selectedTrackIds.includes(item.id) && <Check size={14} className="text-black" />}
+                          {selectedTrackIds.includes(item.id) && <Check size={12} className="text-black" />}
                         </div>
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeTrack?.id === item.id ? 'bg-primary text-black shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]' : 'bg-primary/10 text-primary group-hover:scale-105'}`}>
+                        <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform">
                           {activeTrack?.id === item.id && isPlaying ? (
-                            <Activity size={20} className="animate-pulse" />
-                          ) : item.type === 'Video' ? (
-                            <div className="relative">
-                              <Video size={20} />
-                              <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                              <div className="flex gap-1 items-end h-4">
+                                <motion.div animate={{ height: [4, 12, 4] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-1 bg-primary rounded-full" />
+                                <motion.div animate={{ height: [8, 4, 8] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1 bg-primary rounded-full" />
+                                <motion.div animate={{ height: [4, 10, 4] }} transition={{ repeat: Infinity, duration: 0.4 }} className="w-1 bg-primary rounded-full" />
+                              </div>
                             </div>
                           ) : (
-                            <CloudUpload size={20} />
+                            <MusicIcon size={20} />
                           )}
                         </div>
-                        <div>
-                          {item.title.includes('/') ? (
-                            <>
-                              <p className="text-sm md:text-base font-black tracking-tight">{item.title.split('/')[0].trim()}</p>
-                              <p className="text-[8px] font-bold text-primary/60 uppercase tracking-widest -mt-0.5">
-                                {item.title.split('/').slice(1).join(' x ')}
-                              </p>
-                            </>
-                          ) : (
-                            <p className="text-sm md:text-base font-black tracking-tight">{item.title}</p>
-                          )}
-                          <div className="flex items-center gap-1.5 opacity-30 text-[8px] font-black uppercase tracking-widest mt-0.5">
-                            <span className="text-primary">{item.type}</span>
-                            <span className="w-0.5 h-0.5 rounded-full bg-white" />
-                            <span className="text-primary">{customProducers[item.id] || "OWNER"}</span>
-                          </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-bold text-white truncate mb-0.5 tracking-tight group-hover:text-primary transition-colors">
+                            {item.title.includes('/') ? item.title.split('/')[0].trim() : item.title}
+                          </h3>
+                          <p className="text-[10px] font-medium text-white/40 truncate uppercase tracking-wider">
+                            {item.title.includes('/') ? item.title.split('/').slice(1).join(' x ') : (customProducers[item.id] || "OWNER")} • {item.type}
+                          </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="hidden md:flex flex-col items-end mr-4">
-                          <p className="text-[7px] font-black uppercase opacity-30 tracking-widest">Est. Revenue</p>
-                          <p className="text-[10px] font-black text-primary tracking-tighter">$1,240.50</p>
-                        </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenEdit(item as any);
-                          }}
-                          className="p-2 bg-white/5 rounded-full hover:bg-secondary/20 text-white/40 hover:text-secondary transition-all"
+                          onClick={(e) => { e.stopPropagation(); handleOpenEdit(item as any); }}
+                          className="p-2 text-white/40 hover:text-secondary transition-all"
                         >
                           <RefreshCw size={16} />
                         </button>
                         <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            alert(lang === 'KR' ? "수익 공유 링크가 생성되었습니다. 공유 시 귀하의 노드 점수가 상승합니다." : "Revenue share link created. Sharing increases your node score.");
-                          }}
-                          className="p-2 bg-white/5 rounded-full hover:bg-primary/20 text-white/40 hover:text-primary transition-all"
-                        >
-                          <Share2 size={16} />
-                        </button>
-                        <button 
                           onClick={(e) => deleteAsset(item.id, e)}
-                          className="text-white/10 hover:text-red-500 transition-colors p-2"
+                          className="p-2 text-white/20 hover:text-red-500 transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
+                        <button className="p-2 text-white/40 hover:text-white"><MoreVertical size={16} /></button>
                       </div>
                     </div>
 
@@ -1548,7 +1576,7 @@ export default function AlphaWaverseEngine() {
         )}
       </AnimatePresence>
 
-      {/* FULL SCREEN PREMIUM PLAYER */}
+      {/* FULL SCREEN PREMIUM PLAYER (v2 - YTM Standard Inspired) */}
       <AnimatePresence>
         {isPlayerExpanded && activeTrack && (
           <motion.div 
@@ -1556,120 +1584,105 @@ export default function AlphaWaverseEngine() {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 150 }}
-            className="fixed inset-0 z-[1000] bg-black backdrop-blur-3xl flex flex-col pt-16 pb-12 px-8 overflow-hidden"
+            className="fixed inset-0 z-[1000] bg-black flex flex-col overflow-hidden"
           >
-            {/* Background Atmosphere */}
+            {/* Dynamic Background Blur */}
             <div className="absolute inset-0 z-0">
-              <div className="absolute top-1/4 left-1/4 w-[50%] h-[50%] bg-primary/10 blur-[150px] rounded-full animate-pulse" />
-              <div className="absolute bottom-1/4 right-1/4 w-[40%] h-[40%] bg-secondary/10 blur-[150px] rounded-full" />
+              <div className="absolute top-1/4 left-1/4 w-[60%] h-[60%] bg-primary/20 blur-[180px] rounded-full animate-pulse" />
+              <div className="absolute bottom-1/4 right-1/4 w-[50%] h-[50%] bg-secondary/15 blur-[180px] rounded-full" />
             </div>
 
-            <div className="relative z-10 flex flex-col h-full max-w-lg mx-auto w-full">
-              {/* Header */}
-              <div className="flex justify-between items-center mb-10">
-                <button onClick={() => setIsPlayerExpanded(false)} className="p-3 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-all">
-                  <ChevronRight className="rotate-90" />
+            <div className="relative z-10 flex flex-col h-full w-full max-w-lg mx-auto pt-14 px-8 pb-10">
+              {/* TOP BAR */}
+              <div className="flex justify-between items-center mb-8">
+                <button onClick={() => setIsPlayerExpanded(false)} className="p-2 text-white/80 hover:text-white transition-all">
+                  <ChevronRight size={28} className="rotate-90" />
                 </button>
-                <div className="text-center">
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">{T.streaming}</p>
-                  <p className="text-[8px] font-black uppercase text-primary tracking-widest">{activeTrack.category}</p>
+                <div className="flex flex-col items-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 leading-none mb-1">{T.streaming}</p>
+                  <p className="text-[8px] font-black uppercase text-primary tracking-widest leading-none">{activeTrack.category}</p>
                 </div>
-                <button className="p-3 bg-white/5 rounded-2xl border border-white/10 opacity-40">
-                  <Activity size={20} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button className="p-2 text-white/80"><Activity size={22} /></button>
+                  <button className="p-2 text-white/80"><Plus className="rotate-45" size={24} /></button>
+                </div>
               </div>
 
-              {/* Art & Visualizer */}
-              <div className="flex-1 flex flex-col items-center justify-center gap-12 py-10 relative">
-                <div className="relative w-full aspect-square max-w-[320px]">
-                  <motion.div 
-                    animate={isPlaying ? { scale: [1, 1.05, 1], rotate: [0, 1, -1, 0] } : {}}
-                    transition={{ repeat: Infinity, duration: 4 }}
-                    className="w-full h-full rounded-[3rem] bg-gradient-to-br from-primary/20 to-white/5 border border-white/10 flex items-center justify-center shadow-2xl relative z-10 overflow-hidden"
-                  >
-                    <MusicIcon size={120} className="text-primary/20" />
-                    {/* CSS Visualizer Bars */}
-                    <div className="absolute bottom-0 left-0 right-0 h-24 flex items-end justify-center gap-1.5 px-10 pb-8 overflow-hidden">
-                      {Array.from({ length: 12 }).map((_, i) => (
-                        <motion.div 
-                          key={i}
-                          animate={isPlaying ? { 
-                            height: [10, Math.random() * 60 + 20, 10],
-                          } : { height: 4 }}
-                          transition={{ repeat: Infinity, duration: 0.5 + Math.random() * 0.5, delay: i * 0.05 }}
-                          className="w-2 bg-primary/60 rounded-full"
-                        />
-                      ))}
-                    </div>
-                  </motion.div>
-                  {/* Glow Backdrop */}
-                  <div className="absolute inset-0 bg-primary/20 blur-[60px] rounded-full -z-10 animate-pulse" />
-                </div>
-
-                <div className="text-center space-y-3 w-full">
-                  <h2 className="text-3xl font-black tracking-tighter leading-none">{activeTrack.title}</h2>
-                  <div className="flex items-center justify-center gap-3">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">{activeTrack.isrc}</span>
-                    <span className="w-1 h-1 rounded-full bg-white/20" />
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40">ALPHA WAVVERSE CERTIFIED</span>
+              {/* ALBUM ART AREA */}
+              <div className="flex-1 flex flex-col items-center justify-center mb-10">
+                <motion.div 
+                  layoutId={`art-${activeTrack.id}`}
+                  className="w-full aspect-square rounded-[2rem] bg-gradient-to-br from-white/10 to-white/5 border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.6)] flex items-center justify-center relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                    <div className="w-[80%] h-[80%] rounded-full border-[20px] border-white" />
                   </div>
-                </div>
+                  <MusicIcon size={120} className="text-white/20 relative z-10" />
+                  
+                  {/* CSS Visualizer (Subtle Overlay) */}
+                  <div className="absolute bottom-0 left-0 right-0 h-16 flex items-end justify-center gap-1.5 px-8 pb-6">
+                    {Array.from({ length: 15 }).map((_, i) => (
+                      <motion.div 
+                        key={i}
+                        animate={isPlaying ? { height: [4, Math.random() * 40 + 10, 4] } : { height: 2 }}
+                        transition={{ repeat: Infinity, duration: 0.6 + Math.random() * 0.4, delay: i * 0.04 }}
+                        className="w-1.5 bg-primary/40 rounded-full"
+                      />
+                    ))}
+                  </div>
+                </motion.div>
               </div>
 
-              {/* Controls Section */}
+              {/* TRACK INFO */}
+              <div className="flex items-center justify-between mb-10">
+                <div className="flex-1 overflow-hidden pr-6">
+                  <h2 className="text-3xl font-black tracking-tighter truncate mb-1">{activeTrack.title}</h2>
+                  <p className="text-base font-bold opacity-60 text-primary/80 truncate">
+                    {activeTrack.title.includes('/') ? activeTrack.title.split('/')[1].trim() : "Unknown Artist"}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => toggleLike(activeTrack.id)}
+                  className={`p-3 rounded-2xl transition-all ${likedTracks.includes(activeTrack.id) ? 'bg-red-500/10 text-red-500' : 'bg-white/5 text-white/20'}`}
+                >
+                  <Heart size={24} fill={likedTracks.includes(activeTrack.id) ? "currentColor" : "none"} />
+                </button>
+              </div>
+
+              {/* PROGRESS BAR & CONTROLS */}
               <div className="space-y-10">
                 {/* Scrubber */}
-                <div className="space-y-4">
-                  <div className="h-1.5 bg-white/5 rounded-full relative cursor-pointer group"
+                <div className="space-y-3">
+                  <div className="h-1 bg-white/10 rounded-full relative cursor-pointer group"
                        onClick={(e) => {
                          const rect = e.currentTarget.getBoundingClientRect();
                          const pos = (e.clientX - rect.left) / rect.width;
                          if (audioRef.current) audioRef.current.currentTime = pos * duration;
                        }}>
                     <motion.div 
-                      className="absolute inset-y-0 left-0 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]"
+                      className="absolute inset-y-0 left-0 bg-white rounded-full"
                       style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
                     />
-                    <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-xl border-4 border-black transition-transform scale-0 group-hover:scale-100" 
+                    <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-xl" 
                          style={{ left: `${(currentTime / (duration || 1)) * 100}%`, marginLeft: '-8px' }} />
                   </div>
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-40">
+                  <div className="flex justify-between text-[10px] font-black uppercase opacity-40 tracking-widest">
                     <span>{Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}</span>
                     <span>{Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}</span>
                   </div>
                 </div>
 
-                {/* Main Action Buttons */}
-                <div className="flex items-center justify-between">
-                  <button onClick={() => toggleLike(activeTrack.id)} className={`p-4 rounded-3xl transition-all ${likedTracks.includes(activeTrack.id) ? 'bg-red-500/10 text-red-500' : 'bg-white/5 text-white/20'}`}>
-                    <Heart size={24} fill={likedTracks.includes(activeTrack.id) ? "currentColor" : "none"} />
+                {/* Main Controls (YTM Inspired) */}
+                <div className="flex items-center justify-between px-2">
+                  <button className="p-3 text-white/40 hover:text-white transition-all">
+                    <RefreshCw size={22} className="rotate-45" />
                   </button>
-                  <div className="flex items-center gap-8">
-                    <button onClick={handleTrackEnd} className="p-4 text-white/40 hover:text-white transition-all transform rotate-180">
-                      <SkipForward size={32} />
+                  <div className="flex items-center gap-10">
+                    <button onClick={handleTrackEnd} className="p-2 text-white/80 hover:text-white transition-all rotate-180">
+                      <SkipForward size={36} fill="currentColor" />
                     </button>
                     <button 
                       onClick={() => setIsPlaying(!isPlaying)}
-                      className="w-24 h-24 rounded-full bg-primary flex items-center justify-center text-black shadow-[0_20px_60px_rgba(var(--primary-rgb),0.4)] hover:scale-105 active:scale-95 transition-all"
-                    >
-                      {isPlaying ? <Pause size={40} fill="currentColor" /> : <Play size={40} fill="currentColor" className="ml-2" />}
-                    </button>
-                    <button onClick={handleTrackEnd} className="p-4 text-white/40 hover:text-white transition-all">
-                      <SkipForward size={32} />
-                    </button>
-                  </div>
-                  <button className="p-4 rounded-3xl bg-white/5 text-white/20">
-                    <RefreshCw size={24} />
-                  </button>
-                </div>
-
-                {/* Secondary AI Actions */}
-                <div className="grid grid-cols-2 gap-4">
-                  <button 
-                    onClick={() => { handleAITask('SCORE'); setIsPlayerExpanded(false); }}
-                    className="py-5 rounded-[2rem] bg-white/5 border border-white/10 flex items-center justify-center gap-3 hover:bg-white/10 transition-all group"
-                  >
-                    <FileText size={18} className="group-hover:text-primary transition-colors" />
                     <span className="text-[11px] font-black uppercase tracking-widest">{T.score} Analysis</span>
                   </button>
                   <button 
