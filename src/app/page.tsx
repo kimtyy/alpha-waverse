@@ -219,6 +219,7 @@ export default function AlphaWaverseEngine() {
   const [uploadArtist, setUploadArtist] = useState('');
   const [uploadProducer, setUploadProducer] = useState('');
   const [customProducers, setCustomProducers] = useState<Record<string, string>>({});
+  const [customTitles, setCustomTitles] = useState<Record<string, string>>({});
   const [registeredFilenames, setRegisteredFilenames] = useState<Set<string>>(new Set());
 
   const singleInputRef = useRef<HTMLInputElement>(null);
@@ -284,6 +285,9 @@ export default function AlphaWaverseEngine() {
 
     const savedProducers = localStorage.getItem('alpha_waverse_custom_producers');
     if (savedProducers) setCustomProducers(JSON.parse(savedProducers));
+
+    const savedTitles = localStorage.getItem('alpha_waverse_custom_titles');
+    if (savedTitles) setCustomTitles(JSON.parse(savedTitles));
   }, []);
 
   // Data Persistence: Save to LocalStorage
@@ -302,6 +306,14 @@ export default function AlphaWaverseEngine() {
   useEffect(() => {
     localStorage.setItem('alpha_waverse_registered_sigs', JSON.stringify(Array.from(registeredFilenames)));
   }, [registeredFilenames]);
+
+  useEffect(() => {
+    localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(customTitles));
+  }, [customTitles]);
+
+  useEffect(() => {
+    localStorage.setItem('alpha_waverse_custom_producers', JSON.stringify(customProducers));
+  }, [customProducers]);
 
   useEffect(() => {
     localStorage.setItem('alpha_waverse_legacy_ids', JSON.stringify(legacyAssetIds));
