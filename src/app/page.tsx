@@ -106,6 +106,12 @@ export default function AlphaWaverseEngine() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [isCloudSynced, setIsCloudSynced] = useState(false);
 
+  // Asset Editing State
+  const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editArtist, setEditArtist] = useState('');
+  const [editProducer, setEditProducer] = useState('');
+
   const handleLogout = () => {
     setUser(null);
     setIsCloudSynced(false);
@@ -128,6 +134,25 @@ export default function AlphaWaverseEngine() {
       setAuthEmail('');
       alert(lang === 'KR' ? `환영합니다, ${mockUser.name}님! 클라우드 자산 동기화가 활성화되었습니다.` : `Welcome, ${mockUser.name}! Cloud sync activated.`);
     }, 2000);
+  };
+
+  const handleOpenEdit = (item: SearchResult) => {
+    setEditingAssetId(item.id);
+    const titleParts = item.title.split('/');
+    setEditTitle(titleParts[0].trim());
+    setEditArtist(titleParts.length > 1 ? titleParts.slice(1).join(' / ').trim() : '');
+    setEditProducer(customProducers[item.id] || '');
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingAssetId) return;
+    
+    const finalTitle = editArtist ? `${editTitle} / ${editArtist}` : editTitle;
+    setCustomTitles(prev => ({ ...prev, [editingAssetId]: finalTitle }));
+    setCustomProducers(prev => ({ ...prev, [editingAssetId]: editProducer }));
+    
+    setEditingAssetId(null);
+    alert(lang === 'KR' ? "자산 메타데이터가 수정되었습니다." : "Asset metadata updated.");
   };
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [isProcessingAI, setIsProcessingAI] = useState(false);
@@ -1227,6 +1252,15 @@ export default function AlphaWaverseEngine() {
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
+                            handleOpenEdit(item as any);
+                          }}
+                          className="p-2 bg-white/5 rounded-full hover:bg-secondary/20 text-white/40 hover:text-secondary transition-all"
+                        >
+                          <RefreshCw size={16} />
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
                             alert(lang === 'KR' ? "수익 공유 링크가 생성되었습니다. 공유 시 귀하의 노드 점수가 상승합니다." : "Revenue share link created. Sharing increases your node score.");
                           }}
                           className="p-2 bg-white/5 rounded-full hover:bg-primary/20 text-white/40 hover:text-primary transition-all"
@@ -1893,6 +1927,78 @@ export default function AlphaWaverseEngine() {
                 >
                   Return to Local Mode
                 </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ASSET EDIT MODAL */}
+      <AnimatePresence>
+        {editingAssetId && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[750] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-6"
+          >
+            <div className="w-full max-w-md premium-glass p-10 rounded-[3rem] border border-white/10 shadow-2xl">
+              <div className="flex flex-col gap-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-secondary/20 flex items-center justify-center text-secondary">
+                    <RefreshCw size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black uppercase tracking-widest">{lang === 'KR' ? "메타데이터 수정" : "Edit Metadata"}</h3>
+                    <p className="text-[10px] opacity-40 uppercase tracking-widest">Asset ID: {editingAssetId}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "곡 제목" : "Track Title"}</label>
+                    <input 
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold focus:border-secondary outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "아티스트 / 연주자" : "Artist / Performer"}</label>
+                    <input 
+                      type="text"
+                      value={editArtist}
+                      onChange={(e) => setEditArtist(e.target.value)}
+                      placeholder="e.g. Luna AI, DJ Bujang"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold focus:border-secondary outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "제작자 / 프로듀서" : "Creator / Producer"}</label>
+                    <input 
+                      type="text"
+                      value={editProducer}
+                      onChange={(e) => setEditProducer(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold focus:border-secondary outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-4">
+                  <button 
+                    onClick={() => setEditingAssetId(null)}
+                    className="flex-1 py-4 rounded-2xl bg-white/5 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                  >
+                    {lang === 'KR' ? "취소" : "Cancel"}
+                  </button>
+                  <button 
+                    onClick={handleSaveEdit}
+                    className="flex-1 py-4 rounded-2xl bg-secondary text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_rgba(var(--secondary-rgb),0.3)]"
+                  >
+                    {lang === 'KR' ? "저장하기" : "Save Changes"}
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
