@@ -408,22 +408,51 @@ export default function AlphaWaverseEngine() {
       return;
     }
 
-    // Determine if it's a single upload or batch based on the input ref used or count
-    const isBatch = e.target.multiple;
+    // NEW: Immediate Batch Registration Flow (Fast Sovereignty)
+    setIsUploading(true);
+    
+    // Process all files in background
+    setTimeout(async () => {
+      const newAssets = [];
+      const newSigs = new Set(registeredFilenames);
+      const updatedTitles = { ...customTitles };
+      const updatedProducers = { ...customProducers };
 
-    if (!isBatch && newFiles.length === 1) {
-      const file = newFiles[0];
-      setUploadFile(file);
-      setUploadTitle(file.name.split('.')[0]);
-      setUploadArtist('');
-      setUploadProducer('');
-      setShowUploadModal(true);
-    } else {
-      setBatchFiles(newFiles);
-      setUploadArtist(''); // Reset common artist
-      setUploadProducer(''); // Reset common producer
-      setShowBatchModal(true);
-    }
+      for (const file of newFiles) {
+        const newId = `user-asset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const isVideo = file.type.startsWith('video/');
+        
+        // Initial title from filename
+        const baseTitle = file.name.split('.')[0];
+        const fullTitle = `${baseTitle} / Unknown / OWNER`;
+        
+        try {
+          await saveToIndexedDB(newId, file);
+          const localUrl = URL.createObjectURL(file);
+          setCustomUrls(prev => ({ ...prev, [newId]: localUrl }));
+          newAssets.push(newId);
+          newSigs.add(`${file.name}-${file.size}`);
+          
+          updatedTitles[newId] = fullTitle;
+          updatedProducers[newId] = "OWNER";
+        } catch (err) {
+          console.error("Fast Registration Failed", err);
+        }
+      }
+      
+      setCustomTitles(updatedTitles);
+      setCustomProducers(updatedProducers);
+      localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
+      localStorage.setItem('alpha_waverse_custom_producers', JSON.stringify(updatedProducers));
+      
+      setRegisteredFilenames(newSigs);
+      setOwnedAssets(prev => [...newAssets, ...prev]);
+      setIsUploading(false);
+      
+      alert(lang === 'KR' 
+        ? `${newAssets.length}개의 자산이 등록되었습니다. 이제 목록에서 정보를 수정하실 수 있습니다.` 
+        : `${newAssets.length} assets registered! You can now edit metadata in the list.`);
+    }, 1000);
     
     e.target.value = '';
   };
@@ -1131,6 +1160,7 @@ export default function AlphaWaverseEngine() {
                     ref={singleInputRef} 
                     onChange={onFileChange} 
                     accept="audio/*,video/*"
+                    multiple
                     className="hidden" 
                   />
                   <input 
