@@ -818,8 +818,13 @@ export default function AlphaWaverseEngine() {
                           onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.slice(0, 5)); setIsPlaying(true); }}
                           className="min-w-[200px] md:min-w-[280px] premium-glass p-5 rounded-3xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden"
                         >
-                          <div className="absolute top-0 right-0 p-3">
+                          <div className="absolute top-0 right-0 p-3 flex flex-col items-end gap-1">
                             <Activity size={12} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {item.id.includes('1') && (
+                              <div className="bg-primary/20 text-primary px-2 py-0.5 rounded-full text-[6px] font-black tracking-widest uppercase">
+                                Trending
+                              </div>
+                            )}
                           </div>
                           <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 mb-4 group-hover:scale-110 group-hover:bg-primary group-hover:text-black transition-all">
                             <MusicIcon size={20} />
@@ -1182,7 +1187,19 @@ export default function AlphaWaverseEngine() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Share2 size={16} className="text-white/20 hover:text-primary transition-colors" />
+                        <div className="hidden md:flex flex-col items-end mr-4">
+                          <p className="text-[7px] font-black uppercase opacity-30 tracking-widest">Est. Revenue</p>
+                          <p className="text-[10px] font-black text-primary tracking-tighter">$1,240.50</p>
+                        </div>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            alert(lang === 'KR' ? "수익 공유 링크가 생성되었습니다. 공유 시 귀하의 노드 점수가 상승합니다." : "Revenue share link created. Sharing increases your node score.");
+                          }}
+                          className="p-2 bg-white/5 rounded-full hover:bg-primary/20 text-white/40 hover:text-primary transition-all"
+                        >
+                          <Share2 size={16} />
+                        </button>
                         <button 
                           onClick={(e) => deleteAsset(item.id, e)}
                           className="text-white/10 hover:text-red-500 transition-colors p-2"
