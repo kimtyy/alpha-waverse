@@ -116,6 +116,11 @@ export default function AlphaWaverseEngine() {
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
+  
+  // Local Filtering States
+  const [studioSearch, setStudioSearch] = useState('');
+  const [vaultSearch, setVaultSearch] = useState('');
+  const [showUnifiedLibrary, setShowUnifiedLibrary] = useState(false);
 
   // DistroKid-style Registration Modal State
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -402,8 +407,10 @@ export default function AlphaWaverseEngine() {
       const updatedProducers = { ...customProducers };
 
       for (const file of batchFiles) {
-        const newId = `user-asset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        const title = file.name.split('.')[0];
+        const newId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        // Format: Title / Artist / Producer
+        const baseTitle = file.name.split('.')[0];
+        const fullTitle = `${baseTitle} / ${uploadArtist || "Unknown"} / ${uploadProducer || "Unknown"}`;
         
         try {
           await saveToIndexedDB(newId, file);
@@ -412,7 +419,7 @@ export default function AlphaWaverseEngine() {
           newAssets.push(newId);
           newSigs.add(`${file.name}-${file.size}`);
           
-          updatedTitles[newId] = title;
+          updatedTitles[newId] = fullTitle;
           if (uploadProducer) {
             updatedProducers[newId] = uploadProducer;
           }
@@ -430,7 +437,9 @@ export default function AlphaWaverseEngine() {
       setOwnedAssets(prev => [...newAssets, ...prev]);
       setIsUploading(false);
       setBatchFiles([]);
-      alert(lang === 'KR' ? `${newAssets.length}개의 자산이 일괄 등록되었습니다!` : `${newAssets.length} assets registered in batch!`);
+      setUploadArtist('');
+      setUploadProducer('');
+      alert(lang === 'KR' ? `${newAssets.length}개의 자산이 한 번에 주권 등록되었습니다!` : `${newAssets.length} assets registered with full sovereignty!`);
     }, 2000);
   };
 
@@ -622,7 +631,10 @@ export default function AlphaWaverseEngine() {
   }, []);
 
   const ownedDisplayList = useMemo(() => {
-    return ownedAssets.map(id => {
+    // Determine the base pool: strictly owned or unified (owned + liked)
+    const baseIds = showUnifiedLibrary ? Array.from(new Set([...ownedAssets, ...likedTracks])) : ownedAssets;
+
+    return baseIds.map(id => {
       const original = WAVE_QUERY_DATA.find(t => t.id === id);
       if (original) return original;
       
@@ -646,7 +658,39 @@ export default function AlphaWaverseEngine() {
         url: customUrls[id] || '' 
       };
     });
-  }, [ownedAssets, customTitles, customUrls, customProducers, lang]);
+  }, [ownedAssets, likedTracks, showUnifiedLibrary, customTitles, customUrls, customProducers, lang]);
+
+  const filteredOwnedList = useMemo(() => {
+    if (!studioSearch) return ownedDisplayList;
+    const term = studioSearch.toLowerCase();
+    return ownedDisplayList.filter(t => 
+      t.title.toLowerCase().includes(term) || 
+      t.category.toLowerCase().includes(term) ||
+      t.isrc.toLowerCase().includes(term)
+    );
+  }, [ownedDisplayList, studioSearch]);
+
+  const filteredVaultList = useMemo(() => {
+    const vaultPool = WAVE_QUERY_DATA.filter(item => likedTracks.includes(item.id));
+    if (!vaultSearch) return vaultPool;
+    const term = vaultSearch.toLowerCase();
+    return vaultPool.filter(t => 
+      t.title.toLowerCase().includes(term) || 
+      t.category.toLowerCase().includes(term) ||
+      t.isrc.toLowerCase().includes(term)
+    );
+  }, [likedTracks, vaultSearch]);
+
+  const toggleSelectAll = (list: any[]) => {
+    const allIds = list.map(t => t.id);
+    const allSelected = allIds.every(id => selectedTrackIds.includes(id));
+    
+    if (allSelected) {
+      setSelectedTrackIds(prev => prev.filter(id => !allIds.includes(id)));
+    } else {
+      setSelectedTrackIds(prev => Array.from(new Set([...prev, ...allIds])));
+    }
+  };
 
   const filteredResults = useMemo(() => {
     if (!debouncedSearchTerm) return [];
@@ -855,19 +899,45 @@ export default function AlphaWaverseEngine() {
                   <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute -inset-2 bg-red-500/10 blur-xl rounded-full" />
                 </div>
                 <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.vault}</h2>
-                <button 
-                  onClick={() => playAll(WAVE_QUERY_DATA.filter(item => likedTracks.includes(item.id)))}
-                  className="flex items-center gap-2 bg-red-500 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(239,68,68,0.3)]"
-                >
-                  <Play size={12} fill="currentColor" /> {T.playAllVault}
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => playAll(filteredVaultList)}
+                    className="flex items-center gap-2 bg-red-500 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(239,68,68,0.3)]"
+                  >
+                    <Play size={12} fill="currentColor" /> {T.playAllVault}
+                  </button>
+                </div>
+              </div>
+
+              {/* VAULT LOCAL SEARCH & SELECT ALL */}
+              <div className="px-2 mb-6 space-y-4">
+                <div className="relative group">
+                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-red-500 transition-colors" />
+                  <input 
+                    type="text"
+                    placeholder={lang === 'KR' ? "보관함 내 검색..." : "Search in Vault..."}
+                    value={vaultSearch}
+                    onChange={(e) => setVaultSearch(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-6 text-xs font-bold focus:border-red-500/50 outline-none transition-all"
+                  />
+                </div>
+                <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center gap-2 cursor-pointer group" onClick={() => toggleSelectAll(filteredVaultList)}>
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${filteredVaultList.length > 0 && filteredVaultList.every(t => selectedTrackIds.includes(t.id)) ? 'bg-red-500 border-red-500' : 'border-white/20 group-hover:border-red-500'}`}>
+                      {filteredVaultList.length > 0 && filteredVaultList.every(t => selectedTrackIds.includes(t.id)) && <Check size={12} className="text-white" />}
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">
+                      {lang === 'KR' ? "전체 선택" : "Select All"} ({filteredVaultList.length})
+                    </span>
+                  </div>
+                </div>
               </div>
               
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 pb-48">
-                {WAVE_QUERY_DATA.filter(item => likedTracks.includes(item.id)).map(item => (
+                {filteredVaultList.map(item => (
                   <div 
                     key={item.id} 
-                    onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.filter(t => likedTracks.includes(t.id))); setIsPlaying(true); }} 
+                    onClick={() => { setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); }} 
                     className={`premium-glass p-5 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer transition-all ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-red-500/5 group'}`}
                   >
                     <div className="flex items-center gap-4">
@@ -910,7 +980,7 @@ export default function AlphaWaverseEngine() {
                     <span className="text-[10px] font-black uppercase tracking-widest">{selectedTrackIds.length} {lang === 'KR' ? "곡 선택됨" : "Selected"}</span>
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedTrackIds([])} className="px-4 py-2 bg-black/20 rounded-lg text-[10px] font-black uppercase">Cancel</button>
-                      <button onClick={() => playSelected(WAVE_QUERY_DATA)} className="px-6 py-2 bg-white text-red-600 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 shadow-xl">
+                      <button onClick={() => playSelected(filteredVaultList)} className="px-6 py-2 bg-white text-red-600 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 shadow-xl">
                         <Play size={10} fill="currentColor" /> Play Selected
                       </button>
                     </div>
@@ -969,9 +1039,17 @@ export default function AlphaWaverseEngine() {
                 <div className="flex flex-col items-center gap-4 w-full">
                   <input 
                     type="file" 
-                    ref={fileInputRef} 
+                    ref={singleInputRef} 
                     onChange={onFileChange} 
                     accept="audio/*,video/*"
+                    className="hidden" 
+                  />
+                  <input 
+                    type="file" 
+                    ref={batchInputRef} 
+                    onChange={onFileChange} 
+                    accept="audio/*,video/*"
+                    multiple
                     className="hidden" 
                   />
                   <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
@@ -1009,6 +1087,42 @@ export default function AlphaWaverseEngine() {
                   <p className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">{T.formatHint}</p>
                 </div>
               </div>
+
+              {/* STUDIO LOCAL SEARCH & UNIFIED TOGGLE */}
+              <div className="px-4 mb-6 space-y-4">
+                <div className="relative group">
+                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors" />
+                  <input 
+                    type="text"
+                    placeholder={lang === 'KR' ? "스튜디오 내 검색..." : "Search in Studio..."}
+                    value={studioSearch}
+                    onChange={(e) => setStudioSearch(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-6 text-xs font-bold focus:border-primary/50 outline-none transition-all"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2 cursor-pointer group" onClick={() => toggleSelectAll(filteredOwnedList)}>
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${filteredOwnedList.length > 0 && filteredOwnedList.every(t => selectedTrackIds.includes(t.id)) ? 'bg-primary border-primary' : 'border-white/20 group-hover:border-primary'}`}>
+                      {filteredOwnedList.length > 0 && filteredOwnedList.every(t => selectedTrackIds.includes(t.id)) && <Check size={12} className="text-black" />}
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">
+                      {lang === 'KR' ? "전체 선택" : "Select All"} ({filteredOwnedList.length})
+                    </span>
+                  </div>
+
+                  <button 
+                    onClick={() => setShowUnifiedLibrary(!showUnifiedLibrary)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all border ${showUnifiedLibrary ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+                  >
+                    <Library size={12} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">
+                      {lang === 'KR' ? "통합 라이브러리" : "Unified Library"}
+                    </span>
+                    <div className={`w-2 h-2 rounded-full ${showUnifiedLibrary ? 'bg-primary animate-pulse' : 'bg-white/20'}`} />
+                  </button>
+                </div>
+              </div>
               
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4 pb-48">
                 {isUploading && (
@@ -1024,10 +1138,10 @@ export default function AlphaWaverseEngine() {
                     </div>
                   </motion.div>
                 )}
-                {ownedDisplayList.map(item => (
+                {filteredOwnedList.map(item => (
                   <div key={item.id} className="flex flex-col gap-2">
                     <div 
-                      onClick={() => { setActiveTrack(item as any); setPlaylist(ownedDisplayList as any); setIsPlaying(true); }} 
+                      onClick={() => { setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); }} 
                       className={`premium-glass p-5 rounded-3xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-primary/5 group'}`}
                     >
                       <div className="flex items-center gap-4">
@@ -1145,7 +1259,7 @@ export default function AlphaWaverseEngine() {
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedTrackIds([])} className="px-4 py-2 bg-black/10 rounded-lg text-[10px] font-black uppercase">Cancel</button>
                       <button onClick={deleteSelected} className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-black uppercase">Delete</button>
-                      <button onClick={() => playSelected(ownedDisplayList)} className="px-6 py-2 bg-black text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-2 shadow-xl">
+                      <button onClick={() => playSelected(filteredOwnedList)} className="px-6 py-2 bg-black text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-2 shadow-xl">
                         <Play size={10} fill="currentColor" /> Play Selected
                       </button>
                     </div>
