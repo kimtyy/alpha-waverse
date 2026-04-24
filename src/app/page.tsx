@@ -112,6 +112,11 @@ export default function AlphaWaverseEngine() {
   const [editArtist, setEditArtist] = useState('');
   const [editProducer, setEditProducer] = useState('');
 
+  // Batch Editing State
+  const [showBatchEditModal, setShowBatchEditModal] = useState(false);
+  const [batchArtist, setBatchArtist] = useState('');
+  const [batchProducer, setBatchProducer] = useState('');
+
   const handleLogout = () => {
     setUser(null);
     setIsCloudSynced(false);
@@ -153,6 +158,27 @@ export default function AlphaWaverseEngine() {
     
     setEditingAssetId(null);
     alert(lang === 'KR' ? "자산 메타데이터가 수정되었습니다." : "Asset metadata updated.");
+  };
+
+  const handleBatchSave = () => {
+    if (selectedTrackIds.length === 0) return;
+    
+    selectedTrackIds.forEach(id => {
+      // For each track, update Artist and Producer if provided
+      if (batchArtist) {
+        const currentTitle = customTitles[id] || WAVE_QUERY_DATA.find(t => t.id === id)?.title || "Unknown";
+        const baseTitle = currentTitle.split('/')[0].trim();
+        setCustomTitles(prev => ({ ...prev, [id]: `${baseTitle} / ${batchArtist}` }));
+      }
+      if (batchProducer) {
+        setCustomProducers(prev => ({ ...prev, [id]: batchProducer }));
+      }
+    });
+    
+    setShowBatchEditModal(false);
+    setBatchArtist('');
+    setBatchProducer('');
+    alert(lang === 'KR' ? `${selectedTrackIds.length}개의 자산이 일괄 수정되었습니다.` : `${selectedTrackIds.length} assets batch updated.`);
   };
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [isProcessingAI, setIsProcessingAI] = useState(false);
@@ -1342,6 +1368,9 @@ export default function AlphaWaverseEngine() {
                     <span className="text-[10px] font-black uppercase tracking-widest">{selectedTrackIds.length} {lang === 'KR' ? "곡 선택됨" : "Selected"}</span>
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedTrackIds([])} className="px-4 py-2 bg-black/10 rounded-lg text-[10px] font-black uppercase">Cancel</button>
+                      <button onClick={() => setShowBatchEditModal(true)} className="px-4 py-2 bg-black/20 text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-2 border border-white/10 hover:bg-black/40 transition-all">
+                        <RefreshCw size={10} /> {lang === 'KR' ? "일괄 수정" : "Batch Edit"}
+                      </button>
                       <button onClick={deleteSelected} className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-black uppercase">Delete</button>
                       <button onClick={() => playSelected(filteredOwnedList)} className="px-6 py-2 bg-black text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-2 shadow-xl">
                         <Play size={10} fill="currentColor" /> Play Selected
@@ -1927,6 +1956,74 @@ export default function AlphaWaverseEngine() {
                 >
                   Return to Local Mode
                 </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* BATCH EDIT MODAL */}
+      <AnimatePresence>
+        {showBatchEditModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[750] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-6"
+          >
+            <div className="w-full max-w-md premium-glass p-10 rounded-[3rem] border border-white/10 shadow-2xl">
+              <div className="flex flex-col gap-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+                    <Layers size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black uppercase tracking-widest">{lang === 'KR' ? "선택 자산 일괄 수정" : "Batch Edit Selected"}</h3>
+                    <p className="text-[10px] opacity-40 uppercase tracking-widest">{selectedTrackIds.length} Assets selected</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <p className="text-[9px] font-bold text-primary/60 uppercase tracking-widest text-center px-4 leading-relaxed">
+                    {lang === 'KR' ? "입력한 항목만 모든 선택된 곡에 동일하게 적용됩니다. 제목은 유지됩니다." : "Only entered fields will be applied to all selected tracks. Titles remain unique."}
+                  </p>
+                  
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "공통 아티스트 / 연주자" : "Common Artist / Performer"}</label>
+                    <input 
+                      type="text"
+                      value={batchArtist}
+                      onChange={(e) => setBatchArtist(e.target.value)}
+                      placeholder="Leave blank to keep original"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold focus:border-primary outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "공통 제작자 / 프로듀서" : "Common Creator / Producer"}</label>
+                    <input 
+                      type="text"
+                      value={batchProducer}
+                      onChange={(e) => setBatchProducer(e.target.value)}
+                      placeholder="Leave blank to keep original"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold focus:border-primary outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-4">
+                  <button 
+                    onClick={() => setShowBatchEditModal(false)}
+                    className="flex-1 py-4 rounded-2xl bg-white/5 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                  >
+                    {lang === 'KR' ? "취소" : "Cancel"}
+                  </button>
+                  <button 
+                    onClick={handleBatchSave}
+                    className="flex-1 py-4 rounded-2xl bg-primary text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_10px_40px_rgba(var(--primary-rgb),0.3)]"
+                  >
+                    {lang === 'KR' ? "일괄 적용하기" : "Apply to All"}
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
