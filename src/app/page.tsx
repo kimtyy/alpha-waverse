@@ -6,7 +6,7 @@ import {
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward, SkipBack,
   Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight,
-  Video, RefreshCw, Layers, MoreVertical, X
+  Video, RefreshCw, Layers, MoreVertical, X, Shuffle
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
 
@@ -823,6 +823,26 @@ export default function AlphaWaverseEngine() {
       t.isrc.toLowerCase().includes(term)
     );
   }, [likedTracks, vaultSearch]);
+
+  const toggleSelection = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTrackIds(prev => 
+      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+    );
+  };
+
+  const playSelected = (list: SearchResult[]) => {
+    const selected = list.filter(t => selectedTrackIds.includes(t.id));
+    const pool = selected.length > 0 ? selected : list;
+    
+    // Shuffle logic if pool is used
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    setPlaylist(shuffled);
+    setActiveTrack(shuffled[0]);
+    setIsPlaying(true);
+    setIsPlayerExpanded(true);
+    setSelectedTrackIds([]); // Reset selection after play
+  };
 
   const toggleSelectAll = (list: any[]) => {
     const allIds = list.map(t => t.id);
