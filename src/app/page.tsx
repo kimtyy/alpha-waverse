@@ -1703,26 +1703,28 @@ export default function AlphaWaverseEngine() {
                   </div>
                 </div>
 
-                {/* Main Controls (YTM Inspired) */}
-                <div className="flex items-center justify-between px-2">
-                  <button className="p-3 text-white/40 hover:text-white transition-all">
-                    <RefreshCw size={22} className="rotate-45" />
-                  </button>
-                  <div className="flex items-center gap-10">
-                    <button onClick={handleTrackEnd} className="p-2 text-white/80 hover:text-white transition-all rotate-180">
-                      <SkipForward size={36} fill="currentColor" />
-                    </button>
-                    <button 
-                      onClick={() => setIsPlaying(!isPlaying)}
-                    <span className="text-[11px] font-black uppercase tracking-widest">{T.score} Analysis</span>
+                {/* Main Controls */}
+                <div className="flex items-center justify-center gap-12">
+                  <button onClick={handlePrevTrack} className="p-4 text-white/40 hover:text-white transition-all active:scale-90">
+                    <SkipBack size={32} fill="currentColor" />
                   </button>
                   <button 
-                    onClick={() => { handleAITask('MR'); setIsPlayerExpanded(false); }}
-                    className="py-5 rounded-[2rem] bg-white/5 border border-white/10 flex items-center justify-center gap-3 hover:bg-white/10 transition-all group"
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="w-24 h-24 rounded-full bg-white text-black flex items-center justify-center shadow-[0_20px_50px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all"
                   >
-                    <Mic2 size={18} className="group-hover:text-secondary transition-colors" />
-                    <span className="text-[11px] font-black uppercase tracking-widest">{T.mr} Extraction</span>
+                    {isPlaying ? <Pause size={40} fill="currentColor" /> : <Play size={40} className="ml-2" fill="currentColor" />}
                   </button>
+                  <button onClick={handleTrackEnd} className="p-4 text-white/40 hover:text-white transition-all active:scale-90">
+                    <SkipForward size={32} fill="currentColor" />
+                  </button>
+                </div>
+
+                {/* Zen Marker */}
+                <div className="flex justify-center pt-8">
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5">
+                    <ShieldCheck size={10} className="text-primary/40" />
+                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-primary/40">Zen Mode v2.1 Active</span>
+                  </div>
                 </div>
               </div>
             </div>
