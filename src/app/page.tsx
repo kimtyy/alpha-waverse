@@ -400,6 +400,15 @@ export default function AlphaWaverseEngine() {
     }
   };
 
+  const handlePrevTrack = () => {
+    if (playlist.length > 0 && activeTrack) {
+      const currentIndex = playlist.findIndex(t => t.id === activeTrack.id);
+      if (currentIndex > 0) {
+        setActiveTrack(playlist[currentIndex - 1]);
+      }
+    }
+  };
+
   // Smart Filename Parser
   const parseFilename = (filename: string) => {
     // Remove extension
