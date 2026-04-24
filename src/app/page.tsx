@@ -531,14 +531,21 @@ export default function AlphaWaverseEngine() {
     );
   };
 
-  const playSelected = (pool: any[]) => {
-    const tracksToPlay = pool.filter(t => selectedTrackIds.includes(t.id));
-    if (tracksToPlay.length > 0) {
-      setActiveTrack(tracksToPlay[0]);
-      setPlaylist(tracksToPlay);
-      setIsPlaying(true);
-      setSelectedTrackIds([]);
+  const playSelected = (list: any[], shouldShuffle = false) => {
+    const selected = list.filter(t => selectedTrackIds.includes(t.id));
+    let pool = selected.length > 0 ? selected : list;
+    
+    if (shouldShuffle && pool.length > 0) {
+      pool = [...pool].sort(() => Math.random() - 0.5);
     }
+    
+    if (pool.length > 0) {
+      setPlaylist(pool);
+      setActiveTrack(pool[0]);
+      setIsPlaying(true);
+      setIsPlayerExpanded(true);
+    }
+    setSelectedTrackIds([]); // Reset selection after play
   };
 
   const deleteSelected = () => {
@@ -749,7 +756,6 @@ export default function AlphaWaverseEngine() {
     e.stopPropagation();
     if (window.confirm(lang === 'KR' ? "이 자산을 삭제하시겠습니까?" : "Delete this asset?")) {
       setOwnedAssets(prev => prev.filter(t => t !== id));
-      // Cleanup custom titles and URLs
       const newTitles = { ...customTitles };
       delete newTitles[id];
       setCustomTitles(newTitles);
@@ -758,8 +764,6 @@ export default function AlphaWaverseEngine() {
       const newUrls = { ...customUrls };
       delete newUrls[id];
       setCustomUrls(newUrls);
-      
-      // Optionally delete from IndexedDB (omitted for brevity but recommended)
     }
   };
 
@@ -776,14 +780,9 @@ export default function AlphaWaverseEngine() {
   };
 
   // Load custom titles for uploaded assets
-  const [customTitles, setCustomTitles] = useState<Record<string, string>>({});
+
   
-  useEffect(() => {
-    const saved = localStorage.getItem('alpha_waverse_custom_titles');
-    if (saved) setCustomTitles(JSON.parse(saved));
-    const savedProducers = localStorage.getItem('alpha_waverse_custom_producers');
-    if (savedProducers) setCustomProducers(JSON.parse(savedProducers));
-  }, []);
+
 
   const ownedDisplayList = useMemo(() => {
     // Determine the base pool: strictly owned or unified (owned + liked)
@@ -840,25 +839,7 @@ export default function AlphaWaverseEngine() {
     );
   }, [likedTracks, vaultSearch, ownedDisplayList]);
 
-  const toggleSelection = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelectedTrackIds(prev => 
-      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
-    );
-  };
 
-  const playSelected = (list: SearchResult[]) => {
-    const selected = list.filter(t => selectedTrackIds.includes(t.id));
-    const pool = selected.length > 0 ? selected : list;
-    
-    // Shuffle logic if pool is used
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    setPlaylist(shuffled);
-    setActiveTrack(shuffled[0]);
-    setIsPlaying(true);
-    setIsPlayerExpanded(true);
-    setSelectedTrackIds([]); // Reset selection after play
-  };
 
   const toggleSelectAll = (list: any[]) => {
     const allIds = list.map(t => t.id);
@@ -1255,7 +1236,7 @@ export default function AlphaWaverseEngine() {
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0, opacity: 0 }}
-                    onClick={() => playSelected(view === 'NODE' ? filteredOwnedList : filteredVaultList)}
+                    onClick={() => playSelected(view === 'NODE' ? filteredOwnedList : filteredVaultList, true)}
                     className="fixed bottom-32 right-6 z-[120] bg-white text-black px-6 py-4 rounded-full shadow-[0_15px_30px_rgba(0,0,0,0.4)] flex items-center gap-3 active:scale-90 transition-transform group"
                   >
                     <Shuffle size={20} className="group-hover:rotate-12 transition-transform" />
@@ -1712,7 +1693,7 @@ export default function AlphaWaverseEngine() {
                     transition={{ delay: 0.1 }}
                     className="text-[12px] font-bold text-primary uppercase tracking-[0.3em] opacity-60"
                   >
-                    {activeTrack?.title?.includes('/') ? activeTrack.title.split('/').slice(1).join(' x ') : (customProducers[activeTrack?.id || ''] || "ALPHA WAVVERSE")}
+                    {activeTrack?.title?.includes('/') ? activeTrack.title.split('/').slice(1).join(' x ') : (customProducers[activeTrack?.id || ''] || "ALPHA WAVERSE")}
                   </motion.p>
                 </div>
               </div>
@@ -1827,22 +1808,7 @@ export default function AlphaWaverseEngine() {
         className="hidden" 
       />
 
-      <input 
-        type="file" 
-        ref={singleInputRef} 
-        onChange={onFileChange} 
-        accept="audio/*,video/*" 
-        className="hidden" 
-      />
 
-      <input 
-        type="file" 
-        ref={batchInputRef} 
-        onChange={onFileChange} 
-        multiple
-        accept="audio/*,video/*" 
-        className="hidden" 
-      />
 
       {/* AI PROCESSING OVERLAY */}
       <AnimatePresence>
@@ -2170,47 +2136,7 @@ export default function AlphaWaverseEngine() {
         )}
       </AnimatePresence>
 
-      {/* VISION PROCLAMATION MODAL */}
-      <AnimatePresence>
-        {showVision && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6"
-          >
-            <div className="w-full max-w-md premium-glass p-8 rounded-[2.5rem] border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
-              <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="text-primary" />
-                  <h3 className="text-xl font-black uppercase tracking-widest">{T.visionTitle}</h3>
-                </div>
-                <button onClick={() => setShowVision(false)} className="p-2 hover:bg-white/5 rounded-full">
-                  <Plus className="rotate-45 opacity-40" />
-                </button>
-              </div>
-              <div className="space-y-6 text-sm leading-relaxed opacity-80">
-                <p className="font-bold text-primary italic">"창작자가 자신의 자산을 완전히 통제하는 '주권적 음악 경제'를 구축합니다."</p>
-                <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0"><Zap size={14} /></div>
-                    <div>
-                      <p className="font-black uppercase tracking-tighter text-[10px]">AI Hybrid IP</p>
-                      <p className="text-[11px] opacity-60">AI 기술과 인간의 감각을 결합한 지식재산권의 진화</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowVision(false)}
-                className="w-full mt-10 bg-white/5 border border-white/10 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
-              >
-                Close
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* SOVEREIGN AUTH MODAL */}
       <AnimatePresence>
