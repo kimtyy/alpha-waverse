@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward, SkipBack,
-  Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight,
+  Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight, ChevronDown,
   Video, RefreshCw, Layers, MoreVertical, X, Shuffle
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
@@ -1031,8 +1031,7 @@ export default function AlphaWaverseEngine() {
                       {WAVE_QUERY_DATA.slice(0, 5).map((item) => (
                         <div 
                           key={`rec-${item.id}`}
-                          onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.slice(0, 5)); setIsPlaying(true); setIsPlayerExpanded(true); }}
-                          className="min-w-[200px] md:min-w-[280px] premium-glass p-5 rounded-3xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden"
+                          className="min-w-[200px] md:min-w-[280px] premium-glass p-5 rounded-3xl border border-white/5 hover:border-primary/30 transition-all group relative overflow-hidden"
                         >
                           <div className="absolute top-0 right-0 p-3 flex flex-col items-end gap-1">
                             <Activity size={12} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1042,7 +1041,10 @@ export default function AlphaWaverseEngine() {
                               </div>
                             )}
                           </div>
-                          <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 mb-4 group-hover:scale-110 group-hover:bg-primary group-hover:text-black transition-all">
+                          <div 
+                            onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.slice(0, 5)); setIsPlaying(true); setIsPlayerExpanded(true); }}
+                            className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 mb-4 group-hover:scale-110 group-hover:bg-primary group-hover:text-black transition-all cursor-pointer"
+                          >
                             <MusicIcon size={20} />
                           </div>
                           <h3 className="font-bold text-lg md:text-xl tracking-tight mb-1 truncate">{item.title}</h3>
@@ -1072,11 +1074,13 @@ export default function AlphaWaverseEngine() {
                         filteredResults.map((result) => (
                           <div 
                             key={result.id}
-                            onClick={() => { setActiveTrack(result); setPlaylist(filteredResults); setIsPlaying(true); setIsPlayerExpanded(true); }}
-                            className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer group transition-all ${activeTrack?.id === result.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5'}`}
+                            className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between group transition-all ${activeTrack?.id === result.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5'}`}
                           >
                             <div className="flex items-center gap-4 flex-1 min-w-0">
-                              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform">
+                              <div 
+                                onClick={() => { setActiveTrack(result); setPlaylist(filteredResults); setIsPlaying(true); setIsPlayerExpanded(true); }}
+                                className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
+                              >
                                 {activeTrack?.id === result.id && isPlaying ? (
                                   <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
                                     <div className="flex gap-1 items-end h-4">
@@ -1094,7 +1098,7 @@ export default function AlphaWaverseEngine() {
                                 <p className="text-[10px] font-medium text-white/40 truncate uppercase tracking-wider">{result.category} • {result.isrc}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center gap-1 transition-opacity">
                               <button onClick={(e) => toggleLike(result.id, e)} className={`p-2 transition-all ${likedTracks.includes(result.id) ? 'text-red-500' : 'text-white/20 hover:text-red-500'}`}>
                                 <Heart size={16} fill={likedTracks.includes(result.id) ? "currentColor" : "none"} />
                               </button>
@@ -1179,17 +1183,19 @@ export default function AlphaWaverseEngine() {
                 {filteredVaultList.map(item => (
                   <div 
                     key={item.id} 
-                    onClick={() => { setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); }} 
-                    className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer transition-all ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-white/5 group'}`}
+                    className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between transition-all ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-white/5 group'}`}
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div 
                         onClick={(e) => toggleSelection(item.id, e)}
-                        className={`w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${selectedTrackIds.includes(item.id) ? 'bg-red-500 border-red-500' : 'border-white/10 hover:border-red-500'}`}
+                        className={`cursor-pointer w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${selectedTrackIds.includes(item.id) ? 'bg-red-500 border-red-500' : 'border-white/10 hover:border-red-500'}`}
                       >
                         {selectedTrackIds.includes(item.id) && <Check size={12} className="text-white" />}
                       </div>
-                      <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform">
+                      <div 
+                        onClick={() => { setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); }} 
+                        className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
+                      >
                         {activeTrack?.id === item.id && isPlaying ? (
                           <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
                             <div className="flex gap-1 items-end h-4">
@@ -1207,7 +1213,7 @@ export default function AlphaWaverseEngine() {
                         <p className="text-[10px] font-medium text-white/40 truncate uppercase tracking-wider">{item.category} • {item.isrc}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 transition-opacity">
                       <button onClick={(e) => removeFromVault(item.id, e)} className="p-2 text-white/20 hover:text-red-500 transition-colors">
                         <Trash2 size={16} />
                       </button>
@@ -1441,17 +1447,19 @@ export default function AlphaWaverseEngine() {
                 {filteredOwnedList.map(item => (
                   <div key={item.id} className="flex flex-col gap-2">
                     <div 
-                      onClick={() => { setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); }} 
-                      className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5 group'}`}
+                      className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between transition-all ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5 group'}`}
                     >
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div 
                           onClick={(e) => toggleSelection(item.id, e)}
-                          className={`w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${selectedTrackIds.includes(item.id) ? 'bg-primary border-primary' : 'border-white/10 hover:border-primary'}`}
+                          className={`cursor-pointer w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${selectedTrackIds.includes(item.id) ? 'bg-primary border-primary' : 'border-white/10 hover:border-primary'}`}
                         >
                           {selectedTrackIds.includes(item.id) && <Check size={12} className="text-black" />}
                         </div>
-                        <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform">
+                        <div 
+                          onClick={() => { setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); }} 
+                          className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
+                        >
                           {activeTrack?.id === item.id && isPlaying ? (
                             <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
                               <div className="flex gap-1 items-end h-4">
@@ -1473,7 +1481,7 @@ export default function AlphaWaverseEngine() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 transition-opacity">
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleOpenEdit(item as any); }}
                           className="p-2 text-white/40 hover:text-secondary transition-all"
@@ -1666,36 +1674,51 @@ export default function AlphaWaverseEngine() {
 
             <div className="relative z-10 flex flex-col h-full w-full max-w-lg mx-auto pt-6 px-8 pb-10">
               {/* TOP BAR - ULTRA MINIMAL */}
-              <div className="flex justify-center items-center mb-10">
-                <button onClick={() => setIsPlayerExpanded(false)} className="p-4 text-white/20 hover:text-white transition-all group">
-                  <div className="w-12 h-1 bg-white/20 rounded-full group-hover:bg-white/40 transition-colors" />
+              <div className="flex justify-center items-center mb-6">
+                <button onClick={() => setIsPlayerExpanded(false)} className="p-4 text-white/40 hover:text-white transition-all group active:scale-90 bg-white/5 rounded-full hover:bg-white/10">
+                  <ChevronDown size={28} />
                 </button>
               </div>
 
               {/* MAIN CONTENT - VISUAL FOCUS */}
-              <div className="flex-1 flex flex-col items-center justify-center mb-12">
+              <div className="flex-1 flex flex-col items-center justify-center min-h-0">
                 <motion.div 
                   layoutId="player-art"
-                  className="w-full aspect-square max-w-[320px] premium-glass rounded-[2.5rem] border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative overflow-hidden group"
+                  className="w-full max-w-[320px] aspect-square premium-glass rounded-[2.5rem] border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative overflow-hidden group shrink min-h-0 flex items-center justify-center"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20 animate-pulse" />
-                  <div className="absolute inset-0 flex items-center justify-center text-white/10">
-                    <MusicIcon size={120} strokeWidth={0.5} />
-                  </div>
-                  
-                  {/* Dynamic Glow Overlay */}
-                  <motion.div 
-                    animate={{ scale: isPlaying ? [1, 1.1, 1] : 1, opacity: isPlaying ? [0.3, 0.6, 0.3] : 0.3 }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"
-                  />
+                  {(activeTrack as any)?.type === 'MP4' ? (
+                    <div className="absolute inset-0 bg-black flex flex-col items-center justify-center">
+                      <Video size={64} className="text-white/20 mb-4" />
+                      <span className="text-xs font-black uppercase tracking-widest text-white/40">Video Playing</span>
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Play size={48} className="text-white" />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20 animate-pulse" />
+                      <div className="absolute inset-0 flex items-center justify-center text-white/10">
+                        <MusicIcon size={120} strokeWidth={0.5} />
+                      </div>
+                      {/* Dynamic Glow Overlay */}
+                      <motion.div 
+                        animate={{ scale: isPlaying ? [1, 1.1, 1] : 1, opacity: isPlaying ? [0.3, 0.6, 0.3] : 0.3 }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"
+                      />
+                      {/* Premium Ad Indicator */}
+                      <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md px-2 py-1 rounded-md text-[8px] font-black tracking-widest text-white/40 uppercase">
+                        Ad Space
+                      </div>
+                    </>
+                  )}
                 </motion.div>
 
-                <div className="mt-12 text-center w-full">
+                <div className="mt-8 text-center w-full shrink-0">
                   <motion.h2 
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className="text-2xl md:text-3xl font-black tracking-tight text-white mb-2 leading-tight px-4"
+                    className="text-2xl md:text-3xl font-black tracking-tight text-white mb-2 leading-tight px-4 truncate"
                   >
                     {activeTrack?.title?.includes('/') ? activeTrack.title.split('/')[0].trim() : (activeTrack?.title || "Unknown Track")}
                   </motion.h2>
@@ -1707,11 +1730,28 @@ export default function AlphaWaverseEngine() {
                   >
                     {activeTrack?.title?.includes('/') ? activeTrack.title.split('/').slice(1).join(' x ') : (customProducers[activeTrack?.id || ''] || "ALPHA WAVERSE")}
                   </motion.p>
+                  
+                  {/* AI Extraction Golden Zone Buttons */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="mt-6 flex items-center justify-center gap-4"
+                  >
+                    <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 hover:border-primary/50 text-white/80 hover:text-primary transition-all hover:scale-105 active:scale-95 shadow-lg">
+                      <FileText size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">악보 추출</span>
+                    </button>
+                    <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 hover:border-secondary/50 text-white/80 hover:text-secondary transition-all hover:scale-105 active:scale-95 shadow-lg">
+                      <Mic2 size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">MR 추출</span>
+                    </button>
+                  </motion.div>
                 </div>
               </div>
 
               {/* SIMPLIFIED CONTROLS - ZEN FOCUS */}
-              <div className="mb-12 space-y-8">
+              <div className="pb-8 pt-4 space-y-6 shrink-0">
                 {/* Visualizer (CSS Bars) */}
                 <div className="flex items-end justify-center gap-1.5 h-12">
                   {[...Array(12)].map((_, i) => (
