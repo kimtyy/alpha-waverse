@@ -1604,10 +1604,10 @@ export default function AlphaWaverseEngine() {
       <AnimatePresence>
         {activeTrack && !isPlayerExpanded && (
           <motion.div 
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: -85, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-0 left-0 right-0 z-[100] px-4 pointer-events-none"
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            className="fixed bottom-[110px] md:bottom-[120px] left-0 right-0 z-[100] px-4 pointer-events-none"
           >
             <div className="max-w-2xl mx-auto premium-glass bg-black/40 backdrop-blur-3xl p-2.5 rounded-2xl border border-white/10 pointer-events-auto flex items-center gap-3 shadow-[0_-20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden group">
               {/* Progress Bar (HUD version) */}
