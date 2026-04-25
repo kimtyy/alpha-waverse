@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward, SkipBack,
-  Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight, ChevronDown,
+  Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight, ChevronDown, Home,
   Video, RefreshCw, Layers, MoreVertical, X, Shuffle
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
@@ -1673,18 +1673,11 @@ export default function AlphaWaverseEngine() {
             </div>
 
             <div className="relative z-10 flex flex-col h-full w-full max-w-lg mx-auto pt-6 px-8 pb-10">
-              {/* TOP BAR - ULTRA MINIMAL */}
-              <div className="flex justify-center items-center mb-6">
-                <button onClick={() => setIsPlayerExpanded(false)} className="p-4 text-white/40 hover:text-white transition-all group active:scale-90 bg-white/5 rounded-full hover:bg-white/10">
-                  <ChevronDown size={28} />
-                </button>
-              </div>
-
               {/* MAIN CONTENT - VISUAL FOCUS */}
               <div className="flex-1 flex flex-col items-center justify-center min-h-0">
                 <motion.div 
                   layoutId="player-art"
-                  className="w-full max-w-[320px] aspect-square premium-glass rounded-[2.5rem] border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative overflow-hidden group shrink min-h-0 flex items-center justify-center"
+                  className="w-full max-w-[340px] aspect-square premium-glass rounded-[2rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden group flex shrink items-center justify-center"
                 >
                   {(activeTrack as any)?.type === 'MP4' ? (
                     <div className="absolute inset-0 bg-black flex flex-col items-center justify-center">
@@ -1714,11 +1707,11 @@ export default function AlphaWaverseEngine() {
                   )}
                 </motion.div>
 
-                <div className="mt-8 text-center w-full shrink-0">
+                <div className="mt-6 text-center w-full shrink-0">
                   <motion.h2 
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className="text-2xl md:text-3xl font-black tracking-tight text-white mb-2 leading-tight px-4 truncate"
+                    className="text-2xl font-black tracking-tight text-white mb-1.5 leading-tight px-4 truncate"
                   >
                     {activeTrack?.title?.includes('/') ? activeTrack.title.split('/')[0].trim() : (activeTrack?.title || "Unknown Track")}
                   </motion.h2>
@@ -1736,14 +1729,14 @@ export default function AlphaWaverseEngine() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="mt-6 flex items-center justify-center gap-4"
+                    className="mt-4 flex items-center justify-center gap-3"
                   >
-                    <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 hover:border-primary/50 text-white/80 hover:text-primary transition-all hover:scale-105 active:scale-95 shadow-lg">
-                      <FileText size={14} />
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-primary/50 text-white/80 hover:text-primary transition-all hover:scale-105 active:scale-95 shadow-lg">
+                      <FileText size={12} />
                       <span className="text-[10px] font-black uppercase tracking-widest">악보 추출</span>
                     </button>
-                    <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 hover:border-secondary/50 text-white/80 hover:text-secondary transition-all hover:scale-105 active:scale-95 shadow-lg">
-                      <Mic2 size={14} />
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-secondary/50 text-white/80 hover:text-secondary transition-all hover:scale-105 active:scale-95 shadow-lg">
+                      <Mic2 size={12} />
                       <span className="text-[10px] font-black uppercase tracking-widest">MR 추출</span>
                     </button>
                   </motion.div>
@@ -1751,14 +1744,14 @@ export default function AlphaWaverseEngine() {
               </div>
 
               {/* SIMPLIFIED CONTROLS - ZEN FOCUS */}
-              <div className="pb-8 pt-4 space-y-6 shrink-0">
+              <div className="pb-4 pt-4 space-y-4 shrink-0">
                 {/* Visualizer (CSS Bars) */}
-                <div className="flex items-end justify-center gap-1.5 h-12">
+                <div className="flex items-end justify-center gap-1.5 h-6">
                   {[...Array(12)].map((_, i) => (
                     <motion.div 
                       key={i}
                       animate={{ 
-                        height: isPlaying ? [10, 40, 15, 30, 10][i % 5] : 4,
+                        height: isPlaying ? [6, 24, 10, 18, 6][i % 5] : 4,
                         opacity: isPlaying ? [0.4, 1, 0.4] : 0.2
                       }}
                       transition={{ repeat: Infinity, duration: 0.5 + (i * 0.1), ease: "easeInOut" }}
@@ -1782,27 +1775,35 @@ export default function AlphaWaverseEngine() {
                 </div>
 
                 {/* Main Controls */}
-                <div className="flex items-center justify-center gap-12">
-                  <button onClick={handlePrevTrack} className="p-4 text-white/40 hover:text-white transition-all active:scale-90">
-                    <SkipBack size={32} fill="currentColor" />
+                <div className="flex items-center justify-center gap-8">
+                  <button onClick={handlePrevTrack} className="p-3 text-white/40 hover:text-white transition-all active:scale-90">
+                    <SkipBack size={24} fill="currentColor" />
                   </button>
                   <button 
                     onClick={() => setIsPlaying(!isPlaying)}
-                    className="w-24 h-24 rounded-full bg-white text-black flex items-center justify-center shadow-[0_20px_50px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all"
+                    className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow-[0_10px_30px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all"
                   >
-                    {isPlaying ? <Pause size={40} fill="currentColor" /> : <Play size={40} className="ml-2" fill="currentColor" />}
+                    {isPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} className="ml-1" fill="currentColor" />}
                   </button>
-                  <button onClick={handleTrackEnd} className="p-4 text-white/40 hover:text-white transition-all active:scale-90">
-                    <SkipForward size={32} fill="currentColor" />
+                  <button onClick={handleTrackEnd} className="p-3 text-white/40 hover:text-white transition-all active:scale-90">
+                    <SkipForward size={24} fill="currentColor" />
                   </button>
                 </div>
 
-                {/* Zen Marker */}
-                <div className="flex justify-center pt-8">
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5">
+                {/* BOTTOM ACTION BAR */}
+                <div className="flex items-center justify-between pt-2 px-2">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/5">
                     <ShieldCheck size={10} className="text-primary/40" />
-                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-primary/40">Zen Mode v2.1 Active</span>
+                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-primary/40">Zen Mode</span>
                   </div>
+                  
+                  <button 
+                    onClick={() => setIsPlayerExpanded(false)} 
+                    className="flex items-center gap-2 px-5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-95 border border-white/10 shadow-lg"
+                  >
+                    <Home size={14} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Home</span>
+                  </button>
                 </div>
               </div>
             </div>
