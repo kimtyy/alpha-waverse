@@ -426,33 +426,45 @@ export default function AlphaWaverseEngine() {
     // Remove extension
     const name = filename.replace(/\.[^/.]+$/, "");
     
-    // Pattern 1: Artist - Title or Artist ~ Title
-    const separators = [' - ', ' ~ ', ' _ ', '-', '~', '_'];
+    // Pattern 1: [Category] Title - Artist or similar
+    const categoryMatches = name.match(/^\[(.+?)\]\s*(.+)$/);
+    let workingName = name;
+    let category = "";
+    if (categoryMatches) {
+      category = categoryMatches[1].trim();
+      workingName = categoryMatches[2].trim();
+    }
+
+    // Pattern 2: Artist - Title or Artist ~ Title
+    const separators = [' - ', ' ~ ', ' _ ', ' | ', '-', '~', '_', '|'];
     for (const sep of separators) {
-      if (name.includes(sep)) {
-        const parts = name.split(sep);
+      if (workingName.includes(sep)) {
+        const parts = workingName.split(sep);
         if (parts.length >= 2) {
           return {
             artist: parts[0].trim(),
-            title: parts.slice(1).join(sep).trim()
+            title: parts.slice(1).join(sep).trim(),
+            category: category
           };
         }
       }
     }
 
-    // Pattern 2: Title (Artist) or Title [Artist]
-    const bracketMatches = name.match(/(.+?)\s*[\(\[](.+?)[\)\]]/);
+    // Pattern 3: Title (Artist) or Title [Artist]
+    const bracketMatches = workingName.match(/(.+?)\s*[\(\[](.+?)[\)\]]/);
     if (bracketMatches) {
       return {
         title: bracketMatches[1].trim(),
-        artist: bracketMatches[2].trim()
+        artist: bracketMatches[2].trim(),
+        category: category
       };
     }
 
     // Default: Entire name as title
     return {
-      title: name,
-      artist: "Unknown"
+      title: workingName,
+      artist: "Unknown",
+      category: category
     };
   };
 
@@ -1340,36 +1352,36 @@ export default function AlphaWaverseEngine() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+                  <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm px-2">
                     <button 
                       onClick={() => singleInputRef.current?.click()}
                       disabled={isUploading}
-                      className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-50"
+                      className="col-span-1 flex flex-col items-center justify-center gap-2 bg-primary text-black px-4 py-6 rounded-[2rem] text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 shadow-[0_15px_30px_rgba(var(--primary-rgb),0.3)]"
                     >
-                      {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                      {isUploading ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={22} />}
                       {lang === 'KR' ? "자산 등록" : "Add Asset"}
                     </button>
                     <button 
                       onClick={() => batchInputRef.current?.click()}
                       disabled={isUploading}
-                      className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-primary px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 transition-all disabled:opacity-50"
+                      className="col-span-1 flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10 text-primary px-4 py-6 rounded-[2rem] text-[11px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
                     >
-                      {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Layers size={12} />}
-                      {lang === 'KR' ? "Pro 대량 등록" : "Pro Batch Import"}
+                      {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Layers size={22} />}
+                      {lang === 'KR' ? "Pro 대량 등록" : "Pro Batch"}
                     </button>
                     <button 
                       onClick={() => setShowImportModal(true)}
-                      className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                      className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/60 px-4 py-4 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:text-white transition-all"
                     >
                       <Globe size={12} />
-                      {lang === 'KR' ? "레거시 가져오기" : "Import Legacy"}
+                      {lang === 'KR' ? "레거시 연동" : "Legacy Link"}
                     </button>
                     <button 
                       onClick={clearStudio}
-                      className="col-span-1 flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all"
+                      className="col-span-1 flex items-center justify-center gap-2 bg-red-500/5 border border-red-500/10 text-red-500/40 px-4 py-4 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 transition-all"
                     >
                       <Trash2 size={12} />
-                      {lang === 'KR' ? "초기화" : "Total Reset"}
+                      {lang === 'KR' ? "데이터 초기화" : "Clear All"}
                     </button>
                   </div>
                   <p className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">{T.formatHint}</p>
