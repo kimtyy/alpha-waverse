@@ -1287,13 +1287,16 @@ export default function AlphaWaverseEngine() {
               exit={{ opacity: 0 }}
               className="w-full h-full flex flex-col pt-4 overflow-hidden"
             >
-              <div className="flex flex-col items-center gap-4 mb-10 text-center">
-                <div className="relative">
-                  <Cpu size={28} className="text-primary" />
-                  <motion.div animate={{ opacity: [0.2, 0.4, 0.2] }} transition={{ repeat: Infinity, duration: 3 }} className="absolute -inset-2 bg-primary/5 blur-xl rounded-full" />
+              <div className="flex flex-col items-center gap-2 mb-6 text-center mt-4">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="relative flex-shrink-0">
+                    <Cpu size={20} className="text-primary" />
+                    <motion.div animate={{ opacity: [0.2, 0.4, 0.2] }} transition={{ repeat: Infinity, duration: 3 }} className="absolute -inset-2 bg-primary/5 blur-md rounded-full" />
+                  </div>
+                  <h2 className="text-xl font-black tracking-[0.4em] uppercase leading-tight">{T.studio}</h2>
                 </div>
-                <div className="flex flex-col items-center gap-1 mb-2">
-                  <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase leading-tight">{T.studio}</h2>
+                
+                <div className="flex flex-col items-center gap-1">
                   <div className="bg-primary/20 text-primary px-2 py-0.5 rounded-full text-[6px] font-black tracking-widest uppercase">
                     v1.2 - NODE ACTIVE
                   </div>
@@ -1307,23 +1310,7 @@ export default function AlphaWaverseEngine() {
                     </span>
                   </div>
                 </div>
-                
-                {/* VISION PROCLAMATION CARD */}
-                <button 
-                  onClick={() => setShowVision(true)}
-                  className="w-full max-w-xs premium-glass p-4 rounded-2xl border border-primary/20 bg-primary/5 flex items-center justify-between group hover:border-primary transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary text-black rounded-lg">
-                      <TrendingUp size={16} />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-[10px] font-black uppercase text-primary tracking-widest">{T.visionTitle}</p>
-                      <p className="text-[7px] font-bold opacity-40 uppercase">{T.visionSubtitle}</p>
-                    </div>
-                  </div>
-                  <ChevronRight size={16} className="text-primary group-hover:translate-x-1 transition-transform" />
-                </button>
+              </div>
 
                 {/* STUDIO TABS (YTM Style) */}
                 <div className="flex items-center gap-2 px-4 mt-6 mb-2 overflow-x-auto no-scrollbar py-1 w-full max-w-sm justify-center">
