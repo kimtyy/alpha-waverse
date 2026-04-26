@@ -1210,21 +1210,21 @@ export default function AlphaWaverseEngine() {
                       {activeDropdownId === item.id && (
                         <div className="absolute right-0 top-10 w-36 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 z-[150] shadow-2xl">
                           <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); handleAITask('SCORE', item); }} 
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('SCORE', item); }} 
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <FileText size={12} className="text-primary" />
                             {lang === 'KR' ? '악보 추출' : 'Extract Score'}
                           </button>
                           <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); handleAITask('MR', item); }} 
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('MR', item); }} 
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <Mic2 size={12} className="text-secondary" />
                             {lang === 'KR' ? 'MR 추출' : 'Extract MR'}
                           </button>
                           <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); handleAITask('LYRICS', item); }} 
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('LYRICS', item); }} 
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <MusicIcon size={12} className="text-red-500" />
@@ -1519,21 +1519,21 @@ export default function AlphaWaverseEngine() {
                           {activeDropdownId === item.id && (
                             <div className="absolute right-0 top-10 w-36 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 z-[150] shadow-2xl">
                               <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); handleAITask('SCORE', item as any); }} 
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('SCORE', item as any); }} 
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <FileText size={12} className="text-primary" />
                                 {lang === 'KR' ? '악보 추출' : 'Extract Score'}
                               </button>
                               <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); handleAITask('MR', item as any); }} 
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('MR', item as any); }} 
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <Mic2 size={12} className="text-secondary" />
                                 {lang === 'KR' ? 'MR 추출' : 'Extract MR'}
                               </button>
                               <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); handleAITask('LYRICS', item as any); }} 
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('LYRICS', item as any); }} 
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <MusicIcon size={12} className="text-red-500" />
