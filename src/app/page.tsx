@@ -915,26 +915,26 @@ export default function AlphaWaverseEngine() {
 
       {/* FIXED TOP HUD */}
       <div className="w-full z-50 px-6 pt-6 md:pt-10 flex flex-col items-center">
-        <div className="w-full max-w-5xl flex justify-between items-center premium-glass px-5 py-3 rounded-2xl border border-white/5 backdrop-blur-xl shadow-2xl">
+        <div className="w-full max-w-5xl flex justify-between items-center premium-glass px-5 py-3 rounded-2xl border border-white/10 backdrop-blur-3xl shadow-2xl bg-black/40">
           <div className="flex flex-col items-start">
-            <span className="text-[7px] font-black uppercase tracking-[0.2em] text-primary/60">{T.wealth}</span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-sm md:text-lg font-black tabular-nums">{minedShares.toFixed(4)}</span>
-              <span className="text-[8px] font-bold text-primary">α</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/90">{T.wealth}</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-base md:text-xl font-extrabold tabular-nums tracking-tight text-white">{minedShares.toFixed(4)}</span>
+              <span className="text-[11px] font-black text-primary">α</span>
             </div>
           </div>
           
-          <div className="flex items-center gap-2 opacity-30">
-            <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[6px] font-black uppercase tracking-[0.3em]">{T.status}</span>
+          <div className="flex items-center gap-1.5 opacity-50 bg-white/5 px-2 py-1 rounded-md border border-white/5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/80">{T.status}</span>
           </div>
 
           <div className="flex flex-col items-end text-right">
-            <span className="text-[7px] font-black uppercase tracking-[0.2em] text-secondary/60">{user ? user.email : T.power}</span>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm md:text-lg font-black tabular-nums">{hashPower.toFixed(1)}</span>
-                <Zap size={10} className="text-secondary" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/90">{user ? user.email : T.power}</span>
+            <div className="flex items-center gap-3 mt-0.5">
+              <div className="flex items-center gap-1">
+                <span className="text-base md:text-xl font-extrabold tabular-nums tracking-tight text-white">{hashPower.toFixed(1)}</span>
+                <Zap size={12} className="text-secondary animate-pulse" />
               </div>
               
               <div className="w-[1px] h-6 bg-white/10" />
@@ -1316,7 +1316,6 @@ export default function AlphaWaverseEngine() {
                   ref={singleInputRef} 
                   onChange={onFileChange} 
                   accept="audio/*,video/*"
-                  multiple
                   className="hidden" 
                 />
                 <input 
