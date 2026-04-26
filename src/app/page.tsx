@@ -1125,34 +1125,14 @@ export default function AlphaWaverseEngine() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="w-full h-full flex flex-col pt-10 overflow-hidden"
+              className="w-full h-full flex flex-col pt-6 overflow-hidden"
             >
-              <div className="flex flex-col items-center gap-4 mb-10 text-center">
-                <div className="relative">
-                  <Heart size={32} className="text-red-500" />
+              <div className="flex items-center justify-center gap-3 mb-6 relative">
+                <div className="relative flex items-center justify-center">
+                  <Heart size={24} className="text-red-500" />
                   <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute -inset-2 bg-red-500/10 blur-xl rounded-full" />
                 </div>
-                <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase">{T.vault}</h2>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => playAll(filteredVaultList)}
-                    className="flex items-center gap-2 bg-red-500 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(239,68,68,0.3)]"
-                  >
-                    <Play size={12} fill="currentColor" /> {T.playAllVault}
-                  </button>
-                </div>
-              </div>
-
-              {/* VAULT TABS (YTM Style) */}
-              <div className="flex items-center gap-2 px-4 mb-6 overflow-x-auto no-scrollbar py-1">
-                {['PLAYLISTS', 'ALBUMS', 'ARTISTS'].map((tab) => (
-                  <button 
-                    key={tab}
-                    className={`px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${tab === 'PLAYLISTS' ? 'bg-white text-black shadow-lg scale-105' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
-                  >
-                    {tab}
-                  </button>
-                ))}
+                <h2 className="text-xl md:text-2xl font-black tracking-[0.4em] uppercase mb-0">{T.vault}</h2>
               </div>
 
               {/* VAULT LOCAL SEARCH & SELECT ALL */}
@@ -1176,6 +1156,13 @@ export default function AlphaWaverseEngine() {
                       {lang === 'KR' ? "전체 선택" : "Select All"} ({filteredVaultList.length})
                     </span>
                   </div>
+
+                  <button 
+                    onClick={() => playAll(filteredVaultList)}
+                    className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_5px_15px_rgba(239,68,68,0.3)]"
+                  >
+                    <Play size={10} fill="currentColor" /> {T.playAllVault}
+                  </button>
                 </div>
               </div>
               
@@ -1249,12 +1236,12 @@ export default function AlphaWaverseEngine() {
                 )}
 
                 {/* SHUFFLE ALL FAB (YTM Style) */}
-                {selectedTrackIds.length === 0 && (view === 'NODE' || view === 'LIKES') && (
+                {selectedTrackIds.length === 0 && view === 'NODE' && (
                   <motion.button 
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0, opacity: 0 }}
-                    onClick={() => playSelected(view === 'NODE' ? filteredOwnedList : filteredVaultList, true)}
+                    onClick={() => playSelected(filteredOwnedList, true)}
                     className="fixed bottom-32 right-6 z-[120] bg-white text-black px-6 py-4 rounded-full shadow-[0_15px_30px_rgba(0,0,0,0.4)] flex items-center gap-3 active:scale-90 transition-transform group"
                   >
                     <Shuffle size={20} className="group-hover:rotate-12 transition-transform" />
