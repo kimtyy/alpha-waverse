@@ -561,6 +561,18 @@ export default function AlphaWaverseEngine() {
     setSelectedTrackIds([]); // Reset selection after play
   };
 
+  const exportToVault = () => {
+    if (selectedTrackIds.length === 0) return;
+    const idsToAdd = selectedTrackIds.filter(id => !likedTracks.includes(id));
+    if (idsToAdd.length > 0) {
+      setLikedTracks(prev => [...prev, ...idsToAdd]);
+      alert(lang === 'KR' ? `${idsToAdd.length}개의 자산이 보관함으로 전송되었습니다!` : `${idsToAdd.length} assets sent to Vault!`);
+    } else {
+      alert(lang === 'KR' ? "이미 보관함에 존재하는 자산들입니다." : "Assets already exist in the Vault.");
+    }
+    setSelectedTrackIds([]);
+  };
+
   const deleteSelected = () => {
     if (selectedTrackIds.length === 0) return;
     if (window.confirm(lang === 'KR' ? `${selectedTrackIds.length}개의 자산을 삭제하시겠습니까?` : `Delete ${selectedTrackIds.length} assets?` )) {
@@ -1545,6 +1557,12 @@ export default function AlphaWaverseEngine() {
                     <span className="text-[10px] font-black uppercase tracking-widest">{selectedTrackIds.length} {lang === 'KR' ? "곡 선택됨" : "Selected"}</span>
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedTrackIds([])} className="px-4 py-2 bg-black/10 rounded-lg text-[10px] font-black uppercase">Cancel</button>
+                      <button 
+                        onClick={exportToVault} 
+                        className="px-4 py-2 bg-black text-primary rounded-lg text-[10px] font-black uppercase flex items-center gap-2 border border-primary/20 hover:bg-black/80 transition-all shadow-md"
+                      >
+                        <Heart size={10} fill="currentColor" /> {lang === 'KR' ? "보관함 전송" : "Send to Vault"}
+                      </button>
                       <button onClick={() => setShowBatchEditModal(true)} className="px-4 py-2 bg-black/20 text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-2 border border-white/10 hover:bg-black/40 transition-all">
                         <RefreshCw size={10} /> {lang === 'KR' ? "일괄 수정" : "Batch Edit"}
                       </button>
