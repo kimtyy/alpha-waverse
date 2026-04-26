@@ -707,29 +707,29 @@ export default function AlphaWaverseEngine() {
     fileInputRef.current?.click();
   };
 
-  const handleAITask = (type: 'SCORE' | 'MR') => {
-    if (!activeTrack) return;
+  const handleAITask = (type: 'SCORE' | 'MR' | 'LYRICS', targetTrack?: SearchResult) => {
+    const trackToUse = targetTrack || activeTrack;
+    if (!trackToUse) return;
     
     setAiTaskType(type);
     setIsProcessingAI(true);
     
     setTimeout(() => {
       setIsProcessingAI(false);
+      const trackId = trackToUse.id;
       
-      const trackId = activeTrack.id;
-      setGeneratedAssets(prev => {
-        const current = prev[trackId] || { scores: [], mrs: [] };
-        if (type === 'SCORE') {
-          return { ...prev, [trackId]: { ...current, scores: [...current.scores, `Score-${Date.now()}`] } };
-        } else {
-          return { ...prev, [trackId]: { ...current, mrs: [...current.mrs, `MR-${Date.now()}`] } };
-        }
-      });
-
       if (type === 'SCORE') {
+        setGeneratedAssets(prev => {
+          const current = prev[trackId] || { scores: [], mrs: [] };
+          return { ...prev, [trackId]: { ...current, scores: [...current.scores, `Score-${Date.now()}`] } };
+        });
         setShowScoreViewer(trackId);
-      } else {
-        const mrTitle = `[MR/Inst] ${customTitles[trackId] || activeTrack.title}`;
+      } else if (type === 'MR') {
+        setGeneratedAssets(prev => {
+          const current = prev[trackId] || { scores: [], mrs: [] };
+          return { ...prev, [trackId]: { ...current, mrs: [...current.mrs, `MR-${Date.now()}`] } };
+        });
+        const mrTitle = `[MR/Inst] ${customTitles[trackId] || trackToUse.title}`;
         const mrId = `mr-${trackId}-${Date.now()}`;
         setOwnedAssets(prev => [mrId, ...prev]);
         setCustomTitles(prev => {
@@ -743,6 +743,8 @@ export default function AlphaWaverseEngine() {
           return updated;
         });
         alert(lang === 'KR' ? "MR이 생성되어 스튜디오에 등록되었습니다! 목록 상단에서 확인하세요." : "MR generated and registered to Studio! Check the top of the list.");
+      } else if (type === 'LYRICS') {
+        alert(lang === 'KR' ? "AI가 가사를 완벽하게 분석했습니다!\n\n[가사 미리보기]\n이 푸른 바다의 파도 소리처럼\n우리의 시간은 끝없이 흐르네..." : "AI analyzed the lyrics successfully!\n\n[Preview]\nLike the waves of the blue sea,\nOur time flows endlessly...");
       }
       
       setAiTaskType(null);
@@ -1208,25 +1210,25 @@ export default function AlphaWaverseEngine() {
                       {activeDropdownId === item.id && (
                         <div className="absolute right-0 top-10 w-36 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 z-[150] shadow-2xl">
                           <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); handleAITask('SCORE'); }} 
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); handleAITask('SCORE', item); }} 
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <FileText size={12} className="text-primary" />
-                            {lang === 'KR' ? '악보 추출' : '악보 추출'}
+                            {lang === 'KR' ? '악보 추출' : 'Extract Score'}
                           </button>
                           <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); handleAITask('MR'); }} 
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); handleAITask('MR', item); }} 
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <Mic2 size={12} className="text-secondary" />
-                            {lang === 'KR' ? 'MR 추출' : 'MR 추출'}
+                            {lang === 'KR' ? 'MR 추출' : 'Extract MR'}
                           </button>
                           <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); alert(lang === 'KR' ? '가사 데이터 추출 중...' : 'Extracting Lyrics...'); }} 
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); handleAITask('LYRICS', item); }} 
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <MusicIcon size={12} className="text-red-500" />
-                            {lang === 'KR' ? '가사 추출' : '가사 추출'}
+                            {lang === 'KR' ? '가사 추출' : 'Extract Lyrics'}
                           </button>
                         </div>
                       )}
@@ -1517,25 +1519,25 @@ export default function AlphaWaverseEngine() {
                           {activeDropdownId === item.id && (
                             <div className="absolute right-0 top-10 w-36 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 z-[150] shadow-2xl">
                               <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); handleAITask('SCORE'); }} 
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); handleAITask('SCORE', item as any); }} 
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <FileText size={12} className="text-primary" />
-                                {lang === 'KR' ? '악보 추출' : '악보 추출'}
+                                {lang === 'KR' ? '악보 추출' : 'Extract Score'}
                               </button>
                               <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); handleAITask('MR'); }} 
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); handleAITask('MR', item as any); }} 
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <Mic2 size={12} className="text-secondary" />
-                                {lang === 'KR' ? 'MR 추출' : 'MR 추출'}
+                                {lang === 'KR' ? 'MR 추출' : 'Extract MR'}
                               </button>
                               <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); alert(lang === 'KR' ? '가사 데이터 추출 중...' : 'Extracting Lyrics...'); }} 
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); handleAITask('LYRICS', item as any); }} 
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <MusicIcon size={12} className="text-red-500" />
-                                {lang === 'KR' ? '가사 추출' : '가사 추출'}
+                                {lang === 'KR' ? '가사 추출' : 'Extract Lyrics'}
                               </button>
                             </div>
                           )}
@@ -1870,7 +1872,7 @@ export default function AlphaWaverseEngine() {
               </div>
             </div>
             <h2 className="text-2xl font-black tracking-[0.3em] uppercase mb-2">
-              {aiTaskType === 'SCORE' ? "Analyzing Score" : "Extracting MR"}
+              {aiTaskType === 'SCORE' ? "Analyzing Score" : aiTaskType === 'MR' ? "Extracting MR" : "Analyzing Lyrics"}
             </h2>
             <p className="text-[10px] font-black uppercase tracking-[0.5em] text-primary/60 animate-pulse">
               {lang === 'KR' ? "AI 하이브리드 노드 연산 중..." : "AI HYBRID NODE COMPUTING..."}
