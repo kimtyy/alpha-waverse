@@ -1722,28 +1722,28 @@ export default function AlphaWaverseEngine() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="mt-4 flex flex-wrap items-center justify-center gap-3"
+                    className="mt-4 flex items-center justify-center gap-2 px-2 max-w-sm mx-auto"
                   >
                     <button 
                       onClick={() => handleAITask('SCORE')}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-primary/50 text-white/80 hover:text-primary transition-all hover:scale-105 active:scale-95 shadow-lg"
+                      className="flex items-center gap-1 px-3 py-2 rounded-full bg-white/5 border border-white/10 hover:border-primary/50 text-white/80 hover:text-primary transition-all hover:scale-105 active:scale-95 shadow-lg flex-1 justify-center min-w-0"
                     >
-                      <FileText size={12} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">{lang === 'KR' ? '악보 추출' : 'Extract Score'}</span>
+                      <FileText size={12} className="flex-shrink-0" />
+                      <span className="text-[9px] font-black uppercase tracking-wider truncate">{lang === 'KR' ? '악보 추출' : 'Extract Score'}</span>
                     </button>
                     <button 
                       onClick={() => handleAITask('MR')}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-secondary/50 text-white/80 hover:text-secondary transition-all hover:scale-105 active:scale-95 shadow-lg"
+                      className="flex items-center gap-1 px-3 py-2 rounded-full bg-white/5 border border-white/10 hover:border-secondary/50 text-white/80 hover:text-secondary transition-all hover:scale-105 active:scale-95 shadow-lg flex-1 justify-center min-w-0"
                     >
-                      <Mic2 size={12} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">{lang === 'KR' ? 'MR 추출' : 'Extract MR'}</span>
+                      <Mic2 size={12} className="flex-shrink-0" />
+                      <span className="text-[9px] font-black uppercase tracking-wider truncate">{lang === 'KR' ? 'MR 추출' : 'Extract MR'}</span>
                     </button>
                     <button 
                       onClick={() => handleAITask('LYRICS')}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-red-500/50 text-white/80 hover:text-red-500 transition-all hover:scale-105 active:scale-95 shadow-lg"
+                      className="flex items-center gap-1 px-3 py-2 rounded-full bg-white/5 border border-white/10 hover:border-red-500/50 text-white/80 hover:text-red-500 transition-all hover:scale-105 active:scale-95 shadow-lg flex-1 justify-center min-w-0"
                     >
-                      <MusicIcon size={12} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">{lang === 'KR' ? '가사 추출' : 'Extract Lyrics'}</span>
+                      <MusicIcon size={12} className="flex-shrink-0" />
+                      <span className="text-[9px] font-black uppercase tracking-wider truncate">{lang === 'KR' ? '가사 추출' : 'Extract Lyrics'}</span>
                     </button>
                   </motion.div>
                 </div>
