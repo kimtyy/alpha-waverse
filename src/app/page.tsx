@@ -1156,13 +1156,6 @@ export default function AlphaWaverseEngine() {
                       {lang === 'KR' ? "전체 선택" : "Select All"} ({filteredVaultList.length})
                     </span>
                   </div>
-
-                  <button 
-                    onClick={() => playAll(filteredVaultList)}
-                    className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_5px_15px_rgba(239,68,68,0.3)]"
-                  >
-                    <Play size={10} fill="currentColor" /> {T.playAllVault}
-                  </button>
                 </div>
               </div>
               
@@ -1587,61 +1580,7 @@ export default function AlphaWaverseEngine() {
         </div>
       </div>
 
-      {/* PLAYER HUD */}
-      <AnimatePresence>
-        {activeTrack && !isPlayerExpanded && (
-          <motion.div 
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-            className="fixed bottom-[110px] md:bottom-[120px] left-0 right-0 z-[100] px-4 pointer-events-none"
-          >
-            <div className="max-w-2xl mx-auto premium-glass bg-black/40 backdrop-blur-3xl p-2.5 rounded-2xl border border-white/10 pointer-events-auto flex items-center gap-3 shadow-[0_-20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden group">
-              {/* Progress Bar (HUD version) */}
-              <div className="absolute bottom-0 left-0 h-[1.5px] bg-white/5 w-full">
-                <motion.div 
-                  className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.8)]"
-                  style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
-                />
-              </div>
-
-              <div 
-                onClick={() => setIsPlayerExpanded(true)}
-                className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/20 overflow-hidden relative cursor-pointer group-hover:scale-105 transition-all"
-              >
-                <MusicIcon size={18} />
-                {isPlaying && (
-                  <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
-                    <div className="flex gap-0.5 items-end h-3">
-                      <motion.div animate={{ height: [3, 8, 3] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-0.5 bg-primary rounded-full" />
-                      <motion.div animate={{ height: [6, 3, 6] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-0.5 bg-primary rounded-full" />
-                      <motion.div animate={{ height: [3, 7, 3] }} transition={{ repeat: Infinity, duration: 0.4 }} className="w-0.5 bg-primary rounded-full" />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex-1 overflow-hidden cursor-pointer" onClick={() => setIsPlayerExpanded(true)}>
-                <h4 className="text-[11px] font-black truncate tracking-tight text-white uppercase leading-none mb-1">{activeTrack.title}</h4>
-                <div className="flex items-center gap-2 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em]">
-                  <span className="text-primary">{activeTrack.category}</span>
-                  <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                  <span>{activeTrack.isrc}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1 pr-1">
-                <button onClick={() => setIsPlaying(!isPlaying)} className="p-2.5 text-white hover:text-primary transition-all active:scale-90">
-                  {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
-                </button>
-                <button onClick={handleTrackEnd} className="p-2.5 text-white/40 hover:text-white transition-colors">
-                  <SkipForward size={20} fill="currentColor" />
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* PLAYER HUD REMOVED FOR AD REVENUE STRATEGY */}
 
       {/* FULL SCREEN PREMIUM PLAYER (v2 - YTM Standard Inspired) */}
       <AnimatePresence>
@@ -1785,7 +1724,7 @@ export default function AlphaWaverseEngine() {
                   </div>
                   
                   <button 
-                    onClick={() => setIsPlayerExpanded(false)} 
+                    onClick={() => { setIsPlayerExpanded(false); setIsPlaying(false); setActiveTrack(null); }} 
                     className="flex items-center gap-2 px-5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-95 border border-white/10 shadow-lg"
                   >
                     <Home size={14} />
