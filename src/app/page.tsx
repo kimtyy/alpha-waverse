@@ -1552,23 +1552,40 @@ export default function AlphaWaverseEngine() {
                     initial={{ y: 50, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 50, opacity: 0 }}
-                    className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[120] w-[90%] max-w-sm bg-primary text-black rounded-2xl p-4 shadow-[0_20px_50px_rgba(var(--primary-rgb),0.4)] flex items-center justify-between"
+                    className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[120] w-[92%] max-w-sm bg-primary text-black rounded-3xl p-3 shadow-[0_20px_50px_rgba(var(--primary-rgb),0.4)] flex flex-col gap-2.5 items-center"
                   >
-                    <span className="text-[10px] font-black uppercase tracking-widest">{selectedTrackIds.length} {lang === 'KR' ? "곡 선택됨" : "Selected"}</span>
-                    <div className="flex gap-2">
-                      <button onClick={() => setSelectedTrackIds([])} className="px-4 py-2 bg-black/10 rounded-lg text-[10px] font-black uppercase">Cancel</button>
+                    <div className="flex items-center justify-between w-full px-1">
+                      <span className="text-[11px] font-black uppercase tracking-widest">{selectedTrackIds.length} {lang === 'KR' ? "곡 선택됨" : "Selected"}</span>
+                      <button onClick={() => setSelectedTrackIds([])} className="text-[10px] font-black uppercase opacity-60 hover:opacity-100 px-2 py-1">Cancel</button>
+                    </div>
+                    
+                    <div className="grid grid-cols-4 gap-1.5 w-full">
+                      <button 
+                        onClick={() => playSelected(filteredOwnedList)} 
+                        className="col-span-2 py-2.5 bg-black text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-md hover:scale-[1.02] active:scale-95 transition-all"
+                      >
+                        <Play size={12} fill="currentColor" /> {lang === 'KR' ? "선택 재생" : "Play Selected"}
+                      </button>
+                      
                       <button 
                         onClick={exportToVault} 
-                        className="px-4 py-2 bg-black text-primary rounded-lg text-[10px] font-black uppercase flex items-center gap-2 border border-primary/20 hover:bg-black/80 transition-all shadow-md"
+                        className="col-span-2 py-2.5 bg-black text-primary rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 border border-primary/20 hover:scale-[1.02] active:scale-95 transition-all shadow-md"
                       >
-                        <Heart size={10} fill="currentColor" /> {lang === 'KR' ? "보관함 전송" : "Send to Vault"}
+                        <Heart size={12} fill="currentColor" /> {lang === 'KR' ? "보관함 전송" : "Send to Vault"}
                       </button>
-                      <button onClick={() => setShowBatchEditModal(true)} className="px-4 py-2 bg-black/20 text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-2 border border-white/10 hover:bg-black/40 transition-all">
+                      
+                      <button 
+                        onClick={() => setShowBatchEditModal(true)} 
+                        className="col-span-2 py-2 bg-black/10 text-black/80 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-1 border border-black/10 hover:bg-black/20 transition-all"
+                      >
                         <RefreshCw size={10} /> {lang === 'KR' ? "일괄 수정" : "Batch Edit"}
                       </button>
-                      <button onClick={deleteSelected} className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-black uppercase">Delete</button>
-                      <button onClick={() => playSelected(filteredOwnedList)} className="px-6 py-2 bg-black text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-2 shadow-xl">
-                        <Play size={10} fill="currentColor" /> Play Selected
+                      
+                      <button 
+                        onClick={deleteSelected} 
+                        className="col-span-2 py-2 bg-red-500/10 text-red-600 border border-red-500/20 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-1 hover:bg-red-500/20 transition-all"
+                      >
+                        <Trash2 size={10} /> {lang === 'KR' ? "삭제" : "Delete"}
                       </button>
                     </div>
                   </motion.div>
