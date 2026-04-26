@@ -1295,23 +1295,7 @@ export default function AlphaWaverseEngine() {
                   </div>
                   <h2 className="text-xl font-black tracking-[0.4em] uppercase leading-tight">{T.studio}</h2>
                 </div>
-                
-                <div className="flex flex-col items-center gap-1">
-                  <div className="bg-primary/20 text-primary px-2 py-0.5 rounded-full text-[6px] font-black tracking-widest uppercase">
-                    v1.2 - NODE ACTIVE
-                  </div>
-                  <div 
-                    onClick={triggerSync}
-                    className="flex items-center gap-2 cursor-pointer hover:opacity-100 transition-opacity opacity-60 mt-1"
-                  >
-                    <RefreshCw size={10} className={`text-primary ${isSyncing ? 'animate-spin' : ''}`} />
-                    <span className="text-[8px] font-black uppercase tracking-widest text-primary">
-                      {isSyncing ? (lang === 'KR' ? "동기화 중..." : "Syncing...") : (lang === 'KR' ? "글로벌 노드 연결됨" : "Global Node Connected")}
-                    </span>
-                  </div>
-                </div>
               </div>
-
 
               {/* ACTION REGISTRATION BUTTONS (Directly below Title) */}
               <div className="flex flex-col items-center gap-3 w-full mt-2">
@@ -1332,33 +1316,33 @@ export default function AlphaWaverseEngine() {
                   className="hidden" 
                 />
                 
-                <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm px-2">
+                <div className="grid grid-cols-2 gap-2 w-full max-w-sm px-2">
                   <button 
                     onClick={() => singleInputRef.current?.click()}
                     disabled={isUploading}
-                    className="col-span-1 flex flex-col items-center justify-center gap-1.5 bg-primary text-black px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 shadow-[0_15px_30px_rgba(var(--primary-rgb),0.3)]"
+                    className="col-span-1 flex items-center justify-center gap-2 bg-primary text-black px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                   >
-                    {isUploading ? <Loader2 size={16} className="animate-spin" /> : <PlusCircle size={18} />}
+                    {isUploading ? <Loader2 size={14} className="animate-spin" /> : <PlusCircle size={14} />}
                     {lang === 'KR' ? "자산 등록" : "Add Asset"}
                   </button>
                   <button 
                     onClick={() => batchInputRef.current?.click()}
                     disabled={isUploading}
-                    className="col-span-1 flex flex-col items-center justify-center gap-1.5 bg-white/5 border border-white/10 text-primary px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
+                    className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-primary px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
                   >
-                    {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Layers size={18} />}
-                    {lang === 'KR' ? "Pro 대량 등록" : "Pro Batch"}
+                    {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />}
+                    {lang === 'KR' ? "자산 대량 등록" : "Asset Bulk"}
                   </button>
                   <button 
                     onClick={() => setShowImportModal(true)}
-                    className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/60 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:text-white transition-all"
+                    className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/60 px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:text-white transition-all"
                   >
                     <Globe size={12} />
                     {lang === 'KR' ? "레거시 연동" : "Legacy Link"}
                   </button>
                   <button 
                     onClick={clearStudio}
-                    className="col-span-1 flex items-center justify-center gap-2 bg-red-500/5 border border-red-500/10 text-red-500/40 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 transition-all"
+                    className="col-span-1 flex items-center justify-center gap-2 bg-red-500/5 border border-red-500/10 text-red-500/40 px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 transition-all"
                   >
                     <Trash2 size={12} />
                     {lang === 'KR' ? "데이터 초기화" : "Clear All"}
@@ -1368,7 +1352,7 @@ export default function AlphaWaverseEngine() {
               </div>
 
               {/* STUDIO LOCAL SEARCH (Below the Registration Actions) */}
-              <div className="px-4 mb-4 mt-2 w-full max-w-sm mx-auto">
+              <div className="px-4 mb-2 mt-1 w-full max-w-sm mx-auto">
                 <div className="relative group">
                   <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors" />
                   <input 
@@ -1381,30 +1365,8 @@ export default function AlphaWaverseEngine() {
                 </div>
               </div>
 
-              {/* DEFAULT PRODUCER SETTING */}
-              <div className="w-full flex flex-col items-center gap-4">
-                <div className="w-full max-w-sm flex items-center gap-3 px-4 py-3 bg-white/5 rounded-2xl border border-white/5 mb-2">
-                  <div className="flex flex-col items-start gap-0.5">
-                    <span className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">Default Producer</span>
-                    <input 
-                      type="text"
-                      value={defaultProducer}
-                      onChange={(e) => {
-                        setDefaultProducer(e.target.value);
-                        localStorage.setItem('alpha_waverse_default_producer', e.target.value);
-                      }}
-                      className="bg-transparent text-[10px] font-black text-primary uppercase tracking-widest outline-none focus:border-b border-primary/30 w-32"
-                    />
-                  </div>
-                  <div className="flex-1 text-right">
-                    <p className="text-[7px] font-bold opacity-20 leading-tight uppercase">Settings apply to new uploads</p>
-                  </div>
-                </div>
-              </div>
-
               <div className="px-4 mb-4">
-                
-                <div className="flex items-center justify-between px-1">
+                <div className="flex items-center px-1">
                   <div className="flex items-center gap-2 cursor-pointer group" onClick={() => toggleSelectAll(filteredOwnedList)}>
                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${filteredOwnedList.length > 0 && filteredOwnedList.every(t => selectedTrackIds.includes(t.id)) ? 'bg-primary border-primary' : 'border-white/20 group-hover:border-primary'}`}>
                       {filteredOwnedList.length > 0 && filteredOwnedList.every(t => selectedTrackIds.includes(t.id)) && <Check size={12} className="text-black" />}
@@ -1413,17 +1375,6 @@ export default function AlphaWaverseEngine() {
                       {lang === 'KR' ? "전체 선택" : "Select All"} ({filteredOwnedList.length})
                     </span>
                   </div>
-
-                  <button 
-                    onClick={() => setShowUnifiedLibrary(!showUnifiedLibrary)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all border ${showUnifiedLibrary ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
-                  >
-                    <Library size={12} />
-                    <span className="text-[9px] font-black uppercase tracking-widest">
-                      {lang === 'KR' ? "통합 라이브러리" : "Unified Library"}
-                    </span>
-                    <div className={`w-2 h-2 rounded-full ${showUnifiedLibrary ? 'bg-primary animate-pulse' : 'bg-white/20'}`} />
-                  </button>
                 </div>
               </div>
               
