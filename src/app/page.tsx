@@ -1312,17 +1312,20 @@ export default function AlphaWaverseEngine() {
                 </div>
               </div>
 
-                {/* STUDIO TABS (YTM Style) */}
-                <div className="flex items-center gap-2 px-4 mt-6 mb-2 overflow-x-auto no-scrollbar py-1 w-full max-w-sm justify-center">
-                  {['ALL', 'ALBUMS', 'ARTISTS'].map((tab) => (
-                    <button 
-                      key={tab}
-                      className={`px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${tab === 'ALL' ? 'bg-white text-black shadow-lg scale-105' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
+
+              {/* STUDIO LOCAL SEARCH */}
+              <div className="px-4 mb-6 w-full max-w-sm mx-auto">
+                <div className="relative group">
+                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors" />
+                  <input 
+                    type="text"
+                    placeholder={lang === 'KR' ? "스튜디오 내 검색..." : "Search in Studio..."}
+                    value={studioSearch}
+                    onChange={(e) => setStudioSearch(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-6 text-xs font-bold focus:border-primary/50 outline-none transition-all"
+                  />
                 </div>
+              </div>
 
                 <div className="flex flex-col items-center gap-4 w-full">
                   <input 
@@ -1395,18 +1398,7 @@ export default function AlphaWaverseEngine() {
                 </div>
               </div>
 
-              {/* STUDIO LOCAL SEARCH & UNIFIED TOGGLE */}
-              <div className="px-4 mb-6 space-y-4">
-                <div className="relative group">
-                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors" />
-                  <input 
-                    type="text"
-                    placeholder={lang === 'KR' ? "스튜디오 내 검색..." : "Search in Studio..."}
-                    value={studioSearch}
-                    onChange={(e) => setStudioSearch(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-6 text-xs font-bold focus:border-primary/50 outline-none transition-all"
-                  />
-                </div>
+              <div className="px-4 mb-4">
                 
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center gap-2 cursor-pointer group" onClick={() => toggleSelectAll(filteredOwnedList)}>
