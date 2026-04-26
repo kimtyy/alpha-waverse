@@ -98,6 +98,7 @@ export default function AlphaWaverseEngine() {
   const [ownedAssets, setOwnedAssets] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showVision, setShowVision] = useState(false);
+  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
   
   // Sovereign Auth State
   const [user, setUser] = useState<{ email: string; name: string; avatar?: string } | null>(null);
@@ -1193,11 +1194,42 @@ export default function AlphaWaverseEngine() {
                         <p className="text-[10px] font-medium text-white/40 truncate uppercase tracking-wider">{item.category} • {item.isrc}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 transition-opacity">
+                    <div className="flex items-center gap-1 transition-opacity relative">
                       <button onClick={(e) => removeFromVault(item.id, e)} className="p-2 text-white/20 hover:text-red-500 transition-colors">
                         <Trash2 size={16} />
                       </button>
-                      <button className="p-2 text-white/40 hover:text-white"><MoreVertical size={16} /></button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === item.id ? null : item.id); }} 
+                        className="p-2 text-white/40 hover:text-white"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+
+                      {activeDropdownId === item.id && (
+                        <div className="absolute right-0 top-10 w-36 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 z-[150] shadow-2xl">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); handleAITask('SCORE'); }} 
+                            className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
+                          >
+                            <FileText size={12} className="text-primary" />
+                            {lang === 'KR' ? '악보 추출' : '악보 추출'}
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); handleAITask('MR'); }} 
+                            className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
+                          >
+                            <Mic2 size={12} className="text-secondary" />
+                            {lang === 'KR' ? 'MR 추출' : 'MR 추출'}
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); alert(lang === 'KR' ? '가사 데이터 추출 중...' : 'Extracting Lyrics...'); }} 
+                            className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
+                          >
+                            <MusicIcon size={12} className="text-red-500" />
+                            {lang === 'KR' ? '가사 추출' : '가사 추출'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1474,7 +1506,40 @@ export default function AlphaWaverseEngine() {
                         >
                           <Trash2 size={16} />
                         </button>
-                        <button className="p-2 text-white/40 hover:text-white"><MoreVertical size={16} /></button>
+                        <div className="relative">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === item.id ? null : item.id); }} 
+                            className="p-2 text-white/40 hover:text-white"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+
+                          {activeDropdownId === item.id && (
+                            <div className="absolute right-0 top-10 w-36 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 z-[150] shadow-2xl">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); handleAITask('SCORE'); }} 
+                                className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
+                              >
+                                <FileText size={12} className="text-primary" />
+                                {lang === 'KR' ? '악보 추출' : '악보 추출'}
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); handleAITask('MR'); }} 
+                                className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
+                              >
+                                <Mic2 size={12} className="text-secondary" />
+                                {lang === 'KR' ? 'MR 추출' : 'MR 추출'}
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); alert(lang === 'KR' ? '가사 데이터 추출 중...' : 'Extracting Lyrics...'); }} 
+                                className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
+                              >
+                                <MusicIcon size={12} className="text-red-500" />
+                                {lang === 'KR' ? '가사 추출' : '가사 추출'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
