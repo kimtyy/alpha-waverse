@@ -125,6 +125,7 @@ export default function AlphaWaverseEngine() {
   const [showBatchEditModal, setShowBatchEditModal] = useState(false);
   const [batchArtist, setBatchArtist] = useState('');
   const [batchProducer, setBatchProducer] = useState('');
+  const [batchTitles, setBatchTitles] = useState<Record<string, string>>({});
 
   const handleLogout = () => {
     setUser(null);
@@ -172,21 +173,42 @@ export default function AlphaWaverseEngine() {
   const handleBatchSave = () => {
     if (selectedTrackIds.length === 0) return;
     
-    selectedTrackIds.forEach(id => {
-      // For each track, update Artist and Producer if provided
-      if (batchArtist) {
-        const currentTitle = customTitles[id] || WAVE_QUERY_DATA.find(t => t.id === id)?.title || "Unknown";
-        const baseTitle = currentTitle.split('/')[0].trim();
-        setCustomTitles(prev => ({ ...prev, [id]: `${baseTitle} / ${batchArtist}` }));
-      }
-      if (batchProducer) {
-        setCustomProducers(prev => ({ ...prev, [id]: batchProducer }));
-      }
+    setCustomTitles(prev => {
+      const updated = { ...prev };
+      selectedTrackIds.forEach(id => {
+        let currentTitle = batchTitles[id] || updated[id] || WAVE_QUERY_DATA.find(t => t.id === id)?.title || "Unknown";
+        if (currentTitle.includes('/')) {
+          currentTitle = currentTitle.split('/')[0].trim();
+        }
+        
+        if (batchArtist) {
+          updated[id] = `${currentTitle} / ${batchArtist}`;
+        } else {
+          const originalTitle = updated[id] || WAVE_QUERY_DATA.find(t => t.id === id)?.title || "Unknown";
+          const parts = originalTitle.split('/');
+          const originalArtist = parts.length > 1 ? parts.slice(1).join(' / ').trim() : 'Unknown';
+          updated[id] = `${currentTitle} / ${originalArtist}`;
+        }
+      });
+      localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updated));
+      return updated;
     });
+
+    if (batchProducer) {
+      setCustomProducers(prev => {
+        const updated = { ...prev };
+        selectedTrackIds.forEach(id => {
+          updated[id] = batchProducer;
+        });
+        localStorage.setItem('alpha_waverse_custom_producers', JSON.stringify(updated));
+        return updated;
+      });
+    }
     
     setShowBatchEditModal(false);
     setBatchArtist('');
     setBatchProducer('');
+    setBatchTitles({});
     alert(lang === 'KR' ? `${selectedTrackIds.length}개의 자산이 일괄 수정되었습니다.` : `${selectedTrackIds.length} assets batch updated.`);
   };
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -1572,7 +1594,15 @@ export default function AlphaWaverseEngine() {
                       </button>
                       
                       <button 
-                        onClick={() => setShowBatchEditModal(true)} 
+                        onClick={() => {
+                          const initialTitles: Record<string, string> = {};
+                          selectedTrackIds.forEach(id => {
+                            const currentTitle = customTitles[id] || WAVE_QUERY_DATA.find(t => t.id === id)?.title || "Unknown";
+                            initialTitles[id] = currentTitle.split('/')[0].trim();
+                          });
+                          setBatchTitles(initialTitles);
+                          setShowBatchEditModal(true);
+                        }} 
                         className="col-span-2 py-2 bg-black/10 text-black/80 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-1 border border-black/10 hover:bg-black/20 transition-all"
                       >
                         <RefreshCw size={10} /> {lang === 'KR' ? "일괄 수정" : "Batch Edit"}
@@ -2269,9 +2299,24 @@ export default function AlphaWaverseEngine() {
                 </div>
 
                 <div className="space-y-6">
-                  <p className="text-[9px] font-bold text-primary/60 uppercase tracking-widest text-center px-4 leading-relaxed">
-                    {lang === 'KR' ? "입력한 항목만 모든 선택된 곡에 동일하게 적용됩니다. 제목은 유지됩니다." : "Only entered fields will be applied to all selected tracks. Titles remain unique."}
-                  </p>
+                  <div className="space-y-3 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar border-t border-b border-white/5 py-4">
+                    <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "개별 곡 제목 설정" : "Individual Track Titles"}</label>
+                    {selectedTrackIds.map(id => {
+                      const track = filteredOwnedList.find(t => t.id === id) || filteredVaultList.find(t => t.id === id);
+                      return (
+                        <div key={id} className="flex flex-col gap-1.5 p-3 bg-white/5 rounded-2xl border border-white/5">
+                          <span className="text-[8px] font-black tracking-widest uppercase opacity-40 truncate px-1">{track?.isrc || id}</span>
+                          <input 
+                            type="text"
+                            value={batchTitles[id] || ""}
+                            onChange={(e) => setBatchTitles(prev => ({ ...prev, [id]: e.target.value }))}
+                            placeholder={track?.title?.split('/')[0].trim() || "Enter Title"}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold focus:border-secondary outline-none transition-all"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                   
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "공통 아티스트 / 연주자" : "Common Artist / Performer"}</label>
