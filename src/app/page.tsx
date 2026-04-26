@@ -1396,7 +1396,6 @@ export default function AlphaWaverseEngine() {
                   </div>
                   <p className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">{T.formatHint}</p>
                 </div>
-              </div>
 
               <div className="px-4 mb-4">
                 
