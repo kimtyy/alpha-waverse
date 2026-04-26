@@ -1554,9 +1554,8 @@ export default function AlphaWaverseEngine() {
                     exit={{ y: 50, opacity: 0 }}
                     className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[120] w-[92%] max-w-sm bg-primary text-black rounded-3xl p-3 shadow-[0_20px_50px_rgba(var(--primary-rgb),0.4)] flex flex-col gap-2.5 items-center"
                   >
-                    <div className="flex items-center justify-between w-full px-1">
+                    <div className="flex items-center justify-center w-full px-1 mb-0.5">
                       <span className="text-[11px] font-black uppercase tracking-widest">{selectedTrackIds.length} {lang === 'KR' ? "곡 선택됨" : "Selected"}</span>
-                      <button onClick={() => setSelectedTrackIds([])} className="text-[10px] font-black uppercase opacity-60 hover:opacity-100 px-2 py-1">Cancel</button>
                     </div>
                     
                     <div className="grid grid-cols-4 gap-1.5 w-full">
