@@ -1313,8 +1313,62 @@ export default function AlphaWaverseEngine() {
               </div>
 
 
-              {/* STUDIO LOCAL SEARCH */}
-              <div className="px-4 mb-6 w-full max-w-sm mx-auto">
+              {/* ACTION REGISTRATION BUTTONS (Directly below Title) */}
+              <div className="flex flex-col items-center gap-3 w-full mt-2">
+                <input 
+                  type="file" 
+                  ref={singleInputRef} 
+                  onChange={onFileChange} 
+                  accept="audio/*,video/*"
+                  multiple
+                  className="hidden" 
+                />
+                <input 
+                  type="file" 
+                  ref={batchInputRef} 
+                  onChange={onFileChange} 
+                  accept="audio/*,video/*"
+                  multiple
+                  className="hidden" 
+                />
+                
+                <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm px-2">
+                  <button 
+                    onClick={() => singleInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="col-span-1 flex flex-col items-center justify-center gap-1.5 bg-primary text-black px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 shadow-[0_15px_30px_rgba(var(--primary-rgb),0.3)]"
+                  >
+                    {isUploading ? <Loader2 size={16} className="animate-spin" /> : <PlusCircle size={18} />}
+                    {lang === 'KR' ? "자산 등록" : "Add Asset"}
+                  </button>
+                  <button 
+                    onClick={() => batchInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="col-span-1 flex flex-col items-center justify-center gap-1.5 bg-white/5 border border-white/10 text-primary px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Layers size={18} />}
+                    {lang === 'KR' ? "Pro 대량 등록" : "Pro Batch"}
+                  </button>
+                  <button 
+                    onClick={() => setShowImportModal(true)}
+                    className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/60 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:text-white transition-all"
+                  >
+                    <Globe size={12} />
+                    {lang === 'KR' ? "레거시 연동" : "Legacy Link"}
+                  </button>
+                  <button 
+                    onClick={clearStudio}
+                    className="col-span-1 flex items-center justify-center gap-2 bg-red-500/5 border border-red-500/10 text-red-500/40 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 transition-all"
+                  >
+                    <Trash2 size={12} />
+                    {lang === 'KR' ? "데이터 초기화" : "Clear All"}
+                  </button>
+                </div>
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">{T.formatHint}</p>
+              </div>
+
+              {/* STUDIO LOCAL SEARCH (Below the Registration Actions) */}
+              <div className="px-4 mb-4 mt-2 w-full max-w-sm mx-auto">
                 <div className="relative group">
                   <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors" />
                   <input 
@@ -1327,75 +1381,26 @@ export default function AlphaWaverseEngine() {
                 </div>
               </div>
 
-                <div className="flex flex-col items-center gap-4 w-full">
-                  <input 
-                    type="file" 
-                    ref={singleInputRef} 
-                    onChange={onFileChange} 
-                    accept="audio/*,video/*"
-                    multiple
-                    className="hidden" 
-                  />
-                  <input 
-                    type="file" 
-                    ref={batchInputRef} 
-                    onChange={onFileChange} 
-                    accept="audio/*,video/*"
-                    multiple
-                    className="hidden" 
-                  />
-                  <div className="w-full max-w-sm flex items-center gap-3 px-4 py-3 bg-white/5 rounded-2xl border border-white/5 mb-2">
-                    <div className="flex flex-col items-start gap-0.5">
-                      <span className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">Default Producer</span>
-                      <input 
-                        type="text"
-                        value={defaultProducer}
-                        onChange={(e) => {
-                          setDefaultProducer(e.target.value);
-                          localStorage.setItem('alpha_waverse_default_producer', e.target.value);
-                        }}
-                        className="bg-transparent text-[10px] font-black text-primary uppercase tracking-widest outline-none focus:border-b border-primary/30 w-32"
-                      />
-                    </div>
-                    <div className="flex-1 text-right">
-                      <p className="text-[7px] font-bold opacity-20 leading-tight uppercase">Settings apply to new uploads</p>
-                    </div>
+              {/* DEFAULT PRODUCER SETTING */}
+              <div className="w-full flex flex-col items-center gap-4">
+                <div className="w-full max-w-sm flex items-center gap-3 px-4 py-3 bg-white/5 rounded-2xl border border-white/5 mb-2">
+                  <div className="flex flex-col items-start gap-0.5">
+                    <span className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">Default Producer</span>
+                    <input 
+                      type="text"
+                      value={defaultProducer}
+                      onChange={(e) => {
+                        setDefaultProducer(e.target.value);
+                        localStorage.setItem('alpha_waverse_default_producer', e.target.value);
+                      }}
+                      className="bg-transparent text-[10px] font-black text-primary uppercase tracking-widest outline-none focus:border-b border-primary/30 w-32"
+                    />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm px-2">
-                    <button 
-                      onClick={() => singleInputRef.current?.click()}
-                      disabled={isUploading}
-                      className="col-span-1 flex flex-col items-center justify-center gap-2 bg-primary text-black px-4 py-6 rounded-[2rem] text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 shadow-[0_15px_30px_rgba(var(--primary-rgb),0.3)]"
-                    >
-                      {isUploading ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={22} />}
-                      {lang === 'KR' ? "자산 등록" : "Add Asset"}
-                    </button>
-                    <button 
-                      onClick={() => batchInputRef.current?.click()}
-                      disabled={isUploading}
-                      className="col-span-1 flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10 text-primary px-4 py-6 rounded-[2rem] text-[11px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
-                    >
-                      {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Layers size={22} />}
-                      {lang === 'KR' ? "Pro 대량 등록" : "Pro Batch"}
-                    </button>
-                    <button 
-                      onClick={() => setShowImportModal(true)}
-                      className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/60 px-4 py-4 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:text-white transition-all"
-                    >
-                      <Globe size={12} />
-                      {lang === 'KR' ? "레거시 연동" : "Legacy Link"}
-                    </button>
-                    <button 
-                      onClick={clearStudio}
-                      className="col-span-1 flex items-center justify-center gap-2 bg-red-500/5 border border-red-500/10 text-red-500/40 px-4 py-4 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 transition-all"
-                    >
-                      <Trash2 size={12} />
-                      {lang === 'KR' ? "데이터 초기화" : "Clear All"}
-                    </button>
+                  <div className="flex-1 text-right">
+                    <p className="text-[7px] font-bold opacity-20 leading-tight uppercase">Settings apply to new uploads</p>
                   </div>
-                  <p className="text-[7px] font-black uppercase tracking-[0.2em] opacity-30">{T.formatHint}</p>
                 </div>
+              </div>
 
               <div className="px-4 mb-4">
                 
