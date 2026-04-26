@@ -1322,7 +1322,6 @@ export default function AlphaWaverseEngine() {
                   type="file" 
                   ref={batchInputRef} 
                   onChange={onFileChange} 
-                  accept="audio/*,video/*"
                   multiple
                   className="hidden" 
                 />
