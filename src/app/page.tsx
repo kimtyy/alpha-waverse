@@ -2264,7 +2264,7 @@ export default function AlphaWaverseEngine() {
                     <Layers size={24} />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black uppercase tracking-widest">{lang === 'KR' ? "선택 자산 일괄 수정" : "Batch Edit Selected"}</h3>
+                    <h3 className="text-base md:text-xl font-black uppercase tracking-wider break-keep">{lang === 'KR' ? "선택 자산 일괄 수정" : "Batch Edit Selected"}</h3>
                     <p className="text-[10px] opacity-40 uppercase tracking-widest">{selectedTrackIds.length} Assets selected</p>
                   </div>
                 </div>
