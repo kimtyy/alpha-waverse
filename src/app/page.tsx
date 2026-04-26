@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward, SkipBack,
-  Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight, ChevronDown, Home,
+  Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight, ChevronDown, Home, ArrowLeft,
   Video, RefreshCw, Layers, MoreVertical, X, Shuffle
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
@@ -1771,13 +1771,23 @@ export default function AlphaWaverseEngine() {
                     <span className="text-[8px] font-black uppercase tracking-[0.3em] text-primary/40">Zen Mode</span>
                   </div>
                   
-                  <button 
-                    onClick={() => { setIsPlayerExpanded(false); setIsPlaying(false); setActiveTrack(null); }} 
-                    className="flex items-center gap-2 px-5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-95 border border-white/10 shadow-lg"
-                  >
-                    <Home size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Home</span>
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => { setIsPlayerExpanded(false); }} 
+                      className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white/80 rounded-full transition-all active:scale-95 border border-white/5 shadow-lg"
+                    >
+                      <ArrowLeft size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Back</span>
+                    </button>
+                    
+                    <button 
+                      onClick={() => { setIsPlayerExpanded(false); setIsPlaying(false); setActiveTrack(null); }} 
+                      className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-95 border border-white/10 shadow-lg"
+                    >
+                      <Home size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Home</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
