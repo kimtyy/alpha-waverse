@@ -6,9 +6,11 @@ import {
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward, SkipBack,
   Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight, ChevronDown, Home, ArrowLeft,
-  Video, RefreshCw, Layers, MoreVertical, X, Shuffle
+  Video, RefreshCw, Layers, MoreVertical, X, Shuffle, Mail
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
+import { supabase } from '@/utils/supabase';
+
 
 export default function AlphaWaverseEngine() {
   // Localization Engine
@@ -82,6 +84,38 @@ export default function AlphaWaverseEngine() {
     }
   }, []);
 
+  useEffect(() => {
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({
+          email: session.user.email || 'user@waverse.io',
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Node Owner',
+          avatar: session.user.user_metadata?.avatar_url
+        });
+        setIsCloudSynced(true);
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          email: session.user.email || 'user@waverse.io',
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Node Owner',
+          avatar: session.user.user_metadata?.avatar_url
+        });
+        setIsCloudSynced(true);
+      } else {
+        setUser(null);
+        setIsCloudSynced(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+
   // Navigation & Search State
   const [view, setView] = useState<'RADAR' | 'LIKES' | 'NODE'>('RADAR');
   const [search, setSearch] = useState('');
@@ -127,29 +161,42 @@ export default function AlphaWaverseEngine() {
   const [batchProducer, setBatchProducer] = useState('');
   const [batchTitles, setBatchTitles] = useState<Record<string, string>>({});
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setIsCloudSynced(false);
     alert(lang === 'KR' ? "안전하게 로그아웃되었습니다. 로컬 모드로 전환합니다." : "Logged out safely. Switching to local mode.");
   };
 
-  const handleAuth = (type: 'GOOGLE' | 'EMAIL') => {
+  const handleAuth = async (type: 'GOOGLE' | 'EMAIL') => {
     setIsAuthLoading(true);
-    // Simulate Global Node Handshake
-    setTimeout(() => {
-      const mockUser = {
-        email: type === 'GOOGLE' ? 'bujang@google.com' : authEmail || 'user@waverse.io',
-        name: type === 'GOOGLE' ? 'Kidari Bujang' : 'Alpha Node Owner',
-        avatar: type === 'GOOGLE' ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bujang' : undefined
-      };
-      setUser(mockUser);
-      setIsCloudSynced(true);
+    try {
+      if (type === 'GOOGLE') {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: typeof window !== 'undefined' ? `${window.location.origin}` : undefined
+          }
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithOtp({
+          email: authEmail,
+          options: {
+            emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}` : undefined
+          }
+        });
+        if (error) throw error;
+        alert(lang === 'KR' ? "이메일로 로그인 링크를 발송했습니다. 메일함을 확인해 주세요!" : "Login link sent to your email! Please check your inbox.");
+        setShowAuthModal(false);
+      }
+    } catch (err: any) {
+      alert(err.message || "Authentication failed.");
+    } finally {
       setIsAuthLoading(false);
-      setShowAuthModal(false);
-      setAuthEmail('');
-      alert(lang === 'KR' ? `환영합니다, ${mockUser.name}님! 클라우드 자산 동기화가 활성화되었습니다.` : `Welcome, ${mockUser.name}! Cloud sync activated.`);
-    }, 2000);
+    }
   };
+
 
   const handleOpenEdit = (item: SearchResult) => {
     setEditingAssetId(item.id);
@@ -537,6 +584,20 @@ export default function AlphaWaverseEngine() {
           
           updatedTitles[newId] = fullTitle;
           updatedProducers[newId] = defaultProducer;
+
+          // P2P Tracker Metadata Broadcast
+          if (user?.email) {
+            await supabase.from('p2p_assets').upsert({
+              asset_id: newId,
+              node_owner: user.email,
+              title: title,
+              artist: artist,
+              producer: defaultProducer,
+              file_type: file.type,
+              node_ip: 'p2p-node-gateway'
+            });
+          }
+
         } catch (err) {
           console.error("Fast Registration Failed", err);
         }
@@ -1822,6 +1883,87 @@ export default function AlphaWaverseEngine() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* SECURE AUTH MODAL */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[650] bg-black/90 backdrop-blur-3xl flex items-center justify-center p-6"
+          >
+            <div className="w-full max-w-md premium-glass p-8 md:p-12 rounded-[3rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/20 blur-[80px] rounded-full pointer-events-none" />
+              <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-secondary/20 blur-[80px] rounded-full pointer-events-none" />
+
+              <div className="flex justify-between items-center mb-10 relative z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+                    <ShieldCheck size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black uppercase tracking-widest">{lang === 'KR' ? "보안 로그인" : "Secure Login"}</h3>
+                    <p className="text-[10px] font-medium opacity-40 uppercase tracking-[0.2em]">Alpha Waverse Node Gateway</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowAuthModal(false)} className="p-2 hover:bg-white/5 rounded-full transition-colors">
+                  <Plus className="rotate-45 opacity-40 hover:opacity-100" size={32} />
+                </button>
+              </div>
+
+              <div className="space-y-6 relative z-10">
+                {/* Email Login Section */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block pl-1">
+                    {lang === 'KR' ? "이메일 주소" : "Email Address"}
+                  </label>
+                  <input 
+                    type="email" 
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="e.g. node@waverse.io"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-sm focus:border-primary outline-none transition-all placeholder:opacity-20 font-bold"
+                  />
+                </div>
+
+                <button 
+                  onClick={() => handleAuth('EMAIL')}
+                  disabled={isAuthLoading || !authEmail}
+                  className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:hover:bg-white/5"
+                >
+                  {isAuthLoading ? (
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Mail size={16} />
+                  )}
+                  {lang === 'KR' ? "이메일로 계속하기" : "Continue with Email"}
+                </button>
+
+                <div className="flex items-center gap-4 my-6">
+                  <div className="h-[1px] bg-white/10 flex-1" />
+                  <span className="text-[9px] font-black opacity-30 tracking-widest uppercase">OR</span>
+                  <div className="h-[1px] bg-white/10 flex-1" />
+                </div>
+
+                {/* Social Login Button */}
+                <button 
+                  onClick={() => handleAuth('GOOGLE')}
+                  disabled={isAuthLoading}
+                  className="w-full bg-primary text-black py-5 rounded-[2rem] font-black uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] flex items-center justify-center gap-3 disabled:opacity-50"
+                >
+                  <Globe size={18} />
+                  {lang === 'KR' ? "구글 계정으로 로그인" : "Login with Google"}
+                </button>
+
+                <p className="text-[8px] font-medium opacity-30 text-center leading-relaxed italic mt-4 px-4">
+                  * By connecting, you certify ownership authorization over deployed decentralized micro-assets.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
 
       {/* VISION PROCLAMATION MODAL */}
       <AnimatePresence>
