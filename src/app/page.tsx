@@ -6,7 +6,7 @@ import {
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward, SkipBack,
   Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight, ChevronDown, Home, ArrowLeft,
-  Video, RefreshCw, Layers, MoreVertical, X, Shuffle, Mail
+  Video, RefreshCw, Layers, MoreVertical, X, Shuffle, Mail, HelpCircle
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
 import { supabase } from '@/utils/supabase';
@@ -157,6 +157,7 @@ export default function AlphaWaverseEngine() {
 
   // Batch Editing State
   const [showBatchEditModal, setShowBatchEditModal] = useState(false);
+  const [showTokenomicsModal, setShowTokenomicsModal] = useState(false);
   const [batchArtist, setBatchArtist] = useState('');
   const [batchProducer, setBatchProducer] = useState('');
   const [batchTitles, setBatchTitles] = useState<Record<string, string>>({});
@@ -999,13 +1000,18 @@ export default function AlphaWaverseEngine() {
       {/* FIXED TOP HUD */}
       <div className="w-full z-50 px-6 pt-6 md:pt-10 flex flex-col items-center">
         <div className="w-full max-w-5xl flex justify-between items-center premium-glass px-5 py-3 rounded-2xl border border-white/10 backdrop-blur-3xl shadow-2xl bg-black/40">
-          <div className="flex flex-col items-start">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/90">{T.wealth}</span>
+          <button 
+            onClick={() => setShowTokenomicsModal(true)}
+            className="flex flex-col items-start hover:scale-105 active:scale-95 transition-all text-left"
+          >
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/90 flex items-center gap-1">
+              {T.wealth} <HelpCircle size={10} className="opacity-60" />
+            </span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="text-base md:text-xl font-extrabold tabular-nums tracking-tight text-white">{minedShares.toFixed(4)}</span>
               <span className="text-[11px] font-black text-primary">α</span>
             </div>
-          </div>
+          </button>
           
           <div className="flex items-center gap-1.5 opacity-50 bg-white/5 px-2 py-1 rounded-md border border-white/5">
             <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -1879,6 +1885,99 @@ export default function AlphaWaverseEngine() {
                   </div>
                 </div>
               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* TOKENOMICS / FLOW OF MONEY MODAL */}
+      <AnimatePresence>
+        {showTokenomicsModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-4 md:p-6"
+          >
+            <div className="w-full max-w-lg premium-glass p-6 md:p-10 rounded-[2.5rem] border border-white/10 shadow-2xl relative overflow-y-auto max-h-[90vh] custom-scrollbar">
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+                    <Coins size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black uppercase tracking-wider">{lang === 'KR' ? "수익의 흐름 (Tokenomics)" : "Flow of Money"}</h3>
+                    <p className="text-[10px] font-medium opacity-40 uppercase tracking-widest">How the Alpha Ecosystem Rewards You</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowTokenomicsModal(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Step 1 */}
+                <div className="p-5 bg-white/5 rounded-2xl border border-white/5 flex gap-4 hover:border-primary/20 transition-all">
+                  <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center font-black text-xs text-primary shrink-0">1</div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-white mb-1">{lang === 'KR' ? "자산 등록 & 권리 보호" : "Asset Minting & Protection"}</h4>
+                    <p className="text-[11px] leading-relaxed opacity-60 font-medium">
+                      {lang === 'KR' 
+                        ? "창작자가 음원을 등록하는 즉시 고유한 블록체인 원장에 기재되어 고유 권리를 공식 보호받습니다." 
+                        : "Your tracks are locked on the decentralized ledger, ensuring true asset sovereignty."}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="p-5 bg-white/5 rounded-2xl border border-white/5 flex gap-4 hover:border-secondary/20 transition-all">
+                  <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center font-black text-xs text-secondary shrink-0">2</div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-white mb-1">{lang === 'KR' ? "분산형 네트워크 전파" : "P2P Node Propagation"}</h4>
+                    <p className="text-[11px] leading-relaxed opacity-60 font-medium">
+                      {lang === 'KR' 
+                        ? "중앙 서버 부하를 줄이기 위해 회원들의 기기가 스트리밍 노드가 되어 안전하고 쾌적하게 분배 전송합니다." 
+                        : "Node networks stream content directly, cutting heavy operational overhead."}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="p-5 bg-white/5 rounded-2xl border border-white/5 flex gap-4 hover:border-primary/20 transition-all">
+                  <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center font-black text-xs text-primary shrink-0">3</div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-white mb-1">{lang === 'KR' ? "알파(α) 자산 형성" : "Alpha (α) Token Yield"}</h4>
+                    <p className="text-[11px] leading-relaxed opacity-60 font-medium">
+                      {lang === 'KR' 
+                        ? "절감된 유통 마진과 광고 수익이 결합하여 실시간으로 '알파(α)' 디지털 자산으로 전환 및 축적됩니다." 
+                        : "Saved operational margins convert directly into real-time platform yield."}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div className="p-5 bg-primary/10 rounded-2xl border border-primary/20 flex gap-4 hover:scale-[1.01] transition-all">
+                  <div className="w-8 h-8 rounded-xl bg-primary text-black flex items-center justify-center font-black text-xs shrink-0">4</div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-black mb-1 flex items-center gap-1.5">
+                      {lang === 'KR' ? "창작자 중심 합리적 정산" : "Creator-Centric Settlement"}
+                      <span className="bg-black/20 text-black text-[8px] px-1.5 py-0.5 rounded font-black tracking-widest">80%+</span>
+                    </h4>
+                    <p className="text-[11px] leading-relaxed text-black/80 font-bold">
+                      {lang === 'KR' 
+                        ? "복잡한 중개 수수료 거품 없이, 발생한 총수익의 80% 이상이 투명하게 원천 창작자에게 정산됩니다." 
+                        : "Skip arbitrary middleman fees. Over 80% goes directly to original node owners."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowTokenomicsModal(false)}
+                className="w-full mt-8 bg-white/5 hover:bg-white/10 border border-white/10 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all"
+              >
+                {lang === 'KR' ? "확인했습니다" : "Got it"}
+              </button>
             </div>
           </motion.div>
         )}
