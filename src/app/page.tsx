@@ -1963,6 +1963,7 @@ export default function AlphaWaverseEngine() {
             </div>
           </motion.div>
         )}
+      </AnimatePresence>
 
 
       {/* VISION PROCLAMATION MODAL */}
