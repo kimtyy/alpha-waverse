@@ -415,6 +415,61 @@ export default function AlphaWaverseEngine() {
     loadAllCustomUrls();
   }, []);
 
+  // NEW: Automatic Background Migration of Local Assets to Cloud
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const migrateToCloud = async () => {
+      const savedOwned = localStorage.getItem('alpha_waverse_owned');
+      if (savedOwned) {
+        const ids = JSON.parse(savedOwned) as string[];
+        for (const id of ids) {
+          if (id.startsWith('user-asset-') || id.startsWith('batch-')) {
+            try {
+              const request = indexedDB.open('AlphaWaverseDB', 1);
+              request.onsuccess = () => {
+                const db = request.result;
+                if (!db.objectStoreNames.contains('assets')) return;
+                const tx = db.transaction('assets', 'readonly');
+                const getReq = tx.objectStore('assets').get(id);
+                getReq.onsuccess = async () => {
+                  const file = getReq.result as File;
+                  if (file) {
+                    // Upload to Cloud
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                      .from('assets')
+                      .upload(`${id}`, file, { upsert: true });
+
+                    if (!uploadError) {
+                      // Parse title/artist safely
+                      const name = file.name.replace(/\.[^/.]+$/, "");
+                      const parts = name.split(' - ');
+                      const title = parts.length > 1 ? parts[1].trim() : name;
+                      const artist = parts.length > 1 ? parts[0].trim() : 'Unknown';
+
+                      await supabase.from('p2p_assets').upsert({
+                        asset_id: id,
+                        node_owner: user.email,
+                        title: title,
+                        artist: artist,
+                        producer: 'Alpha Owner',
+                        file_type: file.type,
+                        node_ip: 'p2p-node-gateway'
+                      });
+                    }
+                  }
+                };
+              };
+            } catch (err) {
+              console.error(`Automatic Migration failed for ${id}:`, err);
+            }
+          }
+        }
+      }
+    };
+    migrateToCloud();
+  }, [user]);
+
   // Load custom assets from Supabase on Login
   useEffect(() => {
     if (!user?.email) return;
