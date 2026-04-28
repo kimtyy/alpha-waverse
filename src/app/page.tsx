@@ -415,6 +415,51 @@ export default function AlphaWaverseEngine() {
     loadAllCustomUrls();
   }, []);
 
+  // Load custom assets from Supabase on Login
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const loadCloudAssets = async () => {
+      try {
+        const { data: cloudAssets, error } = await supabase
+          .from('p2p_assets')
+          .select('*')
+          .eq('node_owner', user.email);
+
+        if (!error && cloudAssets && cloudAssets.length > 0) {
+          const ids: string[] = [];
+          const titlesMap: Record<string, string> = {};
+          const producersMap: Record<string, string> = {};
+          const urlMap: Record<string, string> = {};
+
+          for (const asset of cloudAssets) {
+            ids.push(asset.asset_id);
+            titlesMap[asset.asset_id] = `${asset.title} / ${asset.artist || 'Unknown'} / ${asset.producer || 'Unknown'}`;
+            producersMap[asset.asset_id] = asset.producer || 'Unknown';
+            
+            // Get Public Cloud Storage URL
+            const { data: publicUrlData } = supabase.storage
+              .from('assets')
+              .getPublicUrl(`${asset.asset_id}`);
+            
+            if (publicUrlData?.publicUrl) {
+              urlMap[asset.asset_id] = publicUrlData.publicUrl;
+            }
+          }
+
+          // Merge without losing current local assets
+          setOwnedAssets(prev => Array.from(new Set([...ids, ...prev])));
+          setCustomTitles(prev => ({ ...titlesMap, ...prev }));
+          setCustomProducers(prev => ({ ...producersMap, ...prev }));
+          setCustomUrls(prev => ({ ...urlMap, ...prev }));
+        }
+      } catch (err) {
+        console.error("Failed to load cloud assets", err);
+      }
+    };
+    loadCloudAssets();
+  }, [user]);
+
   // Economy Stats Simulation
   const [minedShares, setMinedShares] = useState(124.5931);
   const [hashPower, setHashPower] = useState(82.9);
@@ -558,7 +603,7 @@ export default function AlphaWaverseEngine() {
       return;
     }
 
-    // NEW: Immediate Batch Registration Flow (Fast Sovereignty)
+    // NEW: Immediate Batch Registration Flow with Cloud Sync
     setIsUploading(true);
     
     // Process all files in background
@@ -567,6 +612,7 @@ export default function AlphaWaverseEngine() {
       const newSigs = new Set(registeredFilenames);
       const updatedTitles = { ...customTitles };
       const updatedProducers = { ...customProducers };
+      const urlMap: Record<string, string> = {};
 
       for (const file of newFiles) {
         const newId = `user-asset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -578,8 +624,27 @@ export default function AlphaWaverseEngine() {
         
         try {
           await saveToIndexedDB(newId, file);
-          const localUrl = URL.createObjectURL(file);
-          setCustomUrls(prev => ({ ...prev, [newId]: localUrl }));
+          let finalUrl = URL.createObjectURL(file);
+          
+          // Cloud Upload to Supabase Storage
+          try {
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('assets')
+              .upload(`${newId}`, file, { upsert: true });
+
+            if (!uploadError) {
+              const { data: publicUrlData } = supabase.storage
+                .from('assets')
+                .getPublicUrl(`${newId}`);
+              if (publicUrlData?.publicUrl) {
+                finalUrl = publicUrlData.publicUrl;
+              }
+            }
+          } catch (cloudErr) {
+            console.error("Cloud upload failed for fast flow", cloudErr);
+          }
+
+          urlMap[newId] = finalUrl;
           newAssets.push(newId);
           newSigs.add(`${file.name}-${file.size}`);
           
@@ -604,6 +669,7 @@ export default function AlphaWaverseEngine() {
         }
       }
       
+      setCustomUrls(prev => ({ ...prev, ...urlMap }));
       setCustomTitles(updatedTitles);
       setCustomProducers(updatedProducers);
       localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
@@ -614,8 +680,8 @@ export default function AlphaWaverseEngine() {
       setIsUploading(false);
       
       alert(lang === 'KR' 
-        ? `${newAssets.length}개의 자산이 등록되었습니다. 이제 목록에서 정보를 수정하실 수 있습니다.` 
-        : `${newAssets.length} assets registered! You can now edit metadata in the list.`);
+        ? `${newAssets.length}개의 자산이 등록되었습니다. 전 세계 노드와 실시간 연동됩니다.` 
+        : `${newAssets.length} assets registered globally across node networks.`);
     }, 1000);
     
     e.target.value = '';
@@ -750,8 +816,27 @@ export default function AlphaWaverseEngine() {
       
       try {
         await saveToIndexedDB(newId, uploadFile);
-        const localUrl = URL.createObjectURL(uploadFile);
-        setCustomUrls(prev => ({ ...prev, [newId]: localUrl }));
+        let finalUrl = URL.createObjectURL(uploadFile);
+        
+        // Cloud Upload to Supabase
+        try {
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('assets')
+            .upload(`${newId}`, uploadFile, { upsert: true });
+
+          if (!uploadError) {
+            const { data: publicUrlData } = supabase.storage
+              .from('assets')
+              .getPublicUrl(`${newId}`);
+            if (publicUrlData?.publicUrl) {
+              finalUrl = publicUrlData.publicUrl;
+            }
+          }
+        } catch (cloudErr) {
+          console.error("Single Cloud upload failed", cloudErr);
+        }
+
+        setCustomUrls(prev => ({ ...prev, [newId]: finalUrl }));
         
         setOwnedAssets(prev => [newId, ...prev]);
         setRegisteredFilenames(prev => new Set(prev).add(`${uploadFile.name}-${uploadFile.size}`));
@@ -764,6 +849,19 @@ export default function AlphaWaverseEngine() {
           setCustomProducers(updatedProducers);
           localStorage.setItem('alpha_waverse_custom_producers', JSON.stringify(updatedProducers));
         }
+
+        // P2P Tracker Metadata Broadcast for single upload
+        if (user?.email) {
+          await supabase.from('p2p_assets').upsert({
+            asset_id: newId,
+            node_owner: user.email,
+            title: uploadTitle,
+            artist: uploadArtist || 'Unknown',
+            producer: uploadProducer || 'Unknown',
+            file_type: uploadFile.type,
+            node_ip: 'p2p-node-gateway'
+          });
+        }
         
         setIsUploading(false);
 
@@ -774,7 +872,7 @@ export default function AlphaWaverseEngine() {
           category: isVideo ? (lang === 'KR' ? '마스터 영상 (YouTube)' : 'Master Video (YouTube)') : (lang === 'KR' ? '사용자 자산' : 'User Asset'),
           isrc: `ISRC-USR-${newId.slice(-4)}`,
           status: 'Certified',
-          url: localUrl
+          url: finalUrl
         };
         
         setActiveTrack(newAsset as any);
