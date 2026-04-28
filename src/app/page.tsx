@@ -1272,13 +1272,7 @@ export default function AlphaWaverseEngine() {
             </div>
           </button>
           
-          <button 
-            onClick={triggerCloudMigration}
-            className="flex items-center gap-1.5 opacity-80 bg-white/5 hover:bg-white/10 hover:border-primary/30 px-3 py-1.5 rounded-xl border border-white/10 transition-all text-[10px] font-black uppercase tracking-[0.2em] text-white/90"
-          >
-            <RefreshCw size={12} className={`${isSyncing ? 'animate-spin text-primary' : 'text-primary'}`} />
-            <span>{isSyncing ? 'SYNCING...' : 'P2P SYNC'}</span>
-          </button>
+          {/* Removed P2P Sync button to align with decentralized vision */}
 
           <div className="flex flex-col items-end text-right">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/90">{user ? user.email : T.power}</span>
