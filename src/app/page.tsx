@@ -1126,9 +1126,26 @@ export default function AlphaWaverseEngine() {
       setCustomTitles({});
       setCustomUrls({});
       setCustomProducers({});
+      setRegisteredFilenames(new Set());
+      
       localStorage.removeItem('alpha_waverse_owned');
       localStorage.removeItem('alpha_waverse_custom_titles');
       localStorage.removeItem('alpha_waverse_custom_producers');
+      localStorage.removeItem('alpha_waverse_registered_sigs');
+
+      // Clear IndexedDB safely
+      try {
+        const request = indexedDB.open('AlphaWaverseDB', 1);
+        request.onsuccess = () => {
+          const db = request.result;
+          if (db.objectStoreNames.contains('assets')) {
+            const tx = db.transaction('assets', 'readwrite');
+            tx.objectStore('assets').clear();
+          }
+        };
+      } catch (e) {
+        console.error("IndexedDB clear failed", e);
+      }
     }
   };
 
