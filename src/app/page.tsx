@@ -1027,8 +1027,13 @@ export default function AlphaWaverseEngine() {
       if (savedOwned) {
         const ids = JSON.parse(savedOwned) as string[];
         
-        for (const id of ids) {
-          if (id.startsWith('user-asset-') || id.startsWith('batch-')) {
+        const idsToMigrate = ids.filter(id => id.startsWith('user-asset-') || id.startsWith('batch-'));
+        const chunkSize = 5;
+
+        for (let i = 0; i < idsToMigrate.length; i += chunkSize) {
+          const chunk = idsToMigrate.slice(i, i + chunkSize);
+          
+          await Promise.all(chunk.map(async (id) => {
             try {
               const file = await new Promise<File | null>((resolve) => {
                 const request = indexedDB.open('AlphaWaverseDB', 1);
@@ -1048,22 +1053,22 @@ export default function AlphaWaverseEngine() {
                   .from('assets')
                   .upload(`${id}`, file, { upsert: true });
 
+                const { title, artist } = parseFilename(file.name);
+                updatedTitles[id] = `${title} / ${artist} / Alpha Owner`;
+
+                // Independent of upload success (update metadata regardless)
+                await supabase.from('p2p_assets').upsert({
+                  asset_id: id,
+                  node_owner: user.email,
+                  title: title,
+                  artist: artist,
+                  producer: 'Alpha Owner',
+                  file_type: file.type,
+                  node_ip: 'p2p-node-gateway'
+                });
+
                 if (!uploadError) {
-                  const { title, artist } = parseFilename(file.name);
-                  updatedTitles[id] = `${title} / ${artist} / Alpha Owner`;
-
-                  const { error: dbError } = await supabase.from('p2p_assets').upsert({
-                    asset_id: id,
-                    node_owner: user.email,
-                    title: title,
-                    artist: artist,
-                    producer: 'Alpha Owner',
-                    file_type: file.type,
-                    node_ip: 'p2p-node-gateway'
-                  });
-
-                  if (!dbError) successCount++;
-                  else failCount++;
+                  successCount++;
                 } else {
                   console.error("Storage upload failed", uploadError);
                   failCount++;
@@ -1073,7 +1078,7 @@ export default function AlphaWaverseEngine() {
               console.error(`Migration failed for ${id}:`, err);
               failCount++;
             }
-          }
+          }));
         }
       }
       
