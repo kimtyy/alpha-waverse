@@ -442,10 +442,7 @@ export default function AlphaWaverseEngine() {
 
                     if (!uploadError) {
                       // Parse title/artist safely
-                      const name = file.name.replace(/\.[^/.]+$/, "");
-                      const parts = name.split(' - ');
-                      const title = parts.length > 1 ? parts[1].trim() : name;
-                      const artist = parts.length > 1 ? parts[0].trim() : 'Unknown';
+                      const { title, artist } = parseFilename(file.name);
 
                       await supabase.from('p2p_assets').upsert({
                         asset_id: id,
@@ -597,6 +594,18 @@ export default function AlphaWaverseEngine() {
     // Remove extension
     const name = filename.replace(/\.[^/.]+$/, "");
     
+    // NEW: Specialized Korean Artist_Title_Noise parser (e.g., 백하린_강변의 추억_11-11)
+    if (name.includes('_')) {
+      const parts = name.split('_');
+      if (parts.length >= 2) {
+        return {
+          artist: parts[0].trim(),
+          title: parts[1].trim(),
+          category: ""
+        };
+      }
+    }
+
     // Pattern 1: [Category] Title - Artist or similar
     const categoryMatches = name.match(/^\[(.+?)\]\s*(.+)$/);
     let workingName = name;
@@ -1011,6 +1020,7 @@ export default function AlphaWaverseEngine() {
     setIsSyncing(true);
     let successCount = 0;
     let failCount = 0;
+    const updatedTitles = { ...customTitles };
 
     try {
       const savedOwned = localStorage.getItem('alpha_waverse_owned');
@@ -1039,10 +1049,8 @@ export default function AlphaWaverseEngine() {
                   .upload(`${id}`, file, { upsert: true });
 
                 if (!uploadError) {
-                  const name = file.name.replace(/\.[^/.]+$/, "");
-                  const parts = name.split(' - ');
-                  const title = parts.length > 1 ? parts[1].trim() : name;
-                  const artist = parts.length > 1 ? parts[0].trim() : 'Unknown';
+                  const { title, artist } = parseFilename(file.name);
+                  updatedTitles[id] = `${title} / ${artist} / Alpha Owner`;
 
                   const { error: dbError } = await supabase.from('p2p_assets').upsert({
                     asset_id: id,
@@ -1068,6 +1076,9 @@ export default function AlphaWaverseEngine() {
           }
         }
       }
+      
+      setCustomTitles(updatedTitles);
+      localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
 
       alert(lang === 'KR' 
         ? `동기화 완료: ${successCount}곡 성공, ${failCount}곡 실패.` 
