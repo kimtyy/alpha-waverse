@@ -10,6 +10,33 @@ export interface SearchResult {
 
 export const WAVE_QUERY_DATA: SearchResult[] = [
   { 
+    id: 'chopin-noc-09', 
+    title: 'Chopin: Nocturne Op. 9 No. 2', 
+    type: 'Music', 
+    category: 'Classical / Piano', 
+    peerId: 'musopen-archive-1',
+    isrc: 'ISRC-KOR-2026-021',
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-1-1.mp3'
+  },
+  { 
+    id: 'beet-moon-01', 
+    title: 'Beethoven: Moonlight Sonata (Mov 1)', 
+    type: 'Music', 
+    category: 'Classical / Piano', 
+    peerId: 'musopen-archive-2',
+    isrc: 'ISRC-KOR-2026-022',
+    url: '/audio/A-Letter-I-Never-Sent---Clara-Paige-1-1.mp3'
+  },
+  { 
+    id: 'mozart-sym-40', 
+    title: 'Mozart: Symphony No. 40 (Mov 1)', 
+    type: 'Music', 
+    category: 'Classical / Orchestral', 
+    peerId: 'musopen-archive-3',
+    isrc: 'ISRC-KOR-2026-023',
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-2-1.mp3'
+  },
+  { 
     id: 'hwb-vol5-01', 
     title: 'Whiskey Blues (Sapphire Edition)', 
     type: 'Music', 
