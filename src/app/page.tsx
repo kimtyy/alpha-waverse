@@ -1001,9 +1001,82 @@ export default function AlphaWaverseEngine() {
   };
 
 
-  const triggerSync = () => {
+  const triggerCloudMigration = async () => {
+    if (!user?.email) {
+      alert(lang === 'KR' ? "클라우드 연동을 위해 먼저 로그인해 주세요!" : "Please login first for cloud sync!");
+      setShowAuthModal(true);
+      return;
+    }
+
     setIsSyncing(true);
-    setTimeout(() => setIsSyncing(false), 2000);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      const savedOwned = localStorage.getItem('alpha_waverse_owned');
+      if (savedOwned) {
+        const ids = JSON.parse(savedOwned) as string[];
+        
+        for (const id of ids) {
+          if (id.startsWith('user-asset-') || id.startsWith('batch-')) {
+            try {
+              const file = await new Promise<File | null>((resolve) => {
+                const request = indexedDB.open('AlphaWaverseDB', 1);
+                request.onsuccess = () => {
+                  const db = request.result;
+                  if (!db.objectStoreNames.contains('assets')) { resolve(null); return; }
+                  const tx = db.transaction('assets', 'readonly');
+                  const getReq = tx.objectStore('assets').get(id);
+                  getReq.onsuccess = () => resolve(getReq.result as File);
+                  getReq.onerror = () => resolve(null);
+                };
+                request.onerror = () => resolve(null);
+              });
+
+              if (file) {
+                const { error: uploadError } = await supabase.storage
+                  .from('assets')
+                  .upload(`${id}`, file, { upsert: true });
+
+                if (!uploadError) {
+                  const name = file.name.replace(/\.[^/.]+$/, "");
+                  const parts = name.split(' - ');
+                  const title = parts.length > 1 ? parts[1].trim() : name;
+                  const artist = parts.length > 1 ? parts[0].trim() : 'Unknown';
+
+                  const { error: dbError } = await supabase.from('p2p_assets').upsert({
+                    asset_id: id,
+                    node_owner: user.email,
+                    title: title,
+                    artist: artist,
+                    producer: 'Alpha Owner',
+                    file_type: file.type,
+                    node_ip: 'p2p-node-gateway'
+                  });
+
+                  if (!dbError) successCount++;
+                  else failCount++;
+                } else {
+                  console.error("Storage upload failed", uploadError);
+                  failCount++;
+                }
+              }
+            } catch (err) {
+              console.error(`Migration failed for ${id}:`, err);
+              failCount++;
+            }
+          }
+        }
+      }
+
+      alert(lang === 'KR' 
+        ? `동기화 완료: ${successCount}곡 성공, ${failCount}곡 실패.` 
+        : `Sync complete: ${successCount} succeeded, ${failCount} failed.`);
+    } catch (err: any) {
+      alert(`Sync Error: ${err.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const toggleLike = (id: string, e: React.MouseEvent) => {
@@ -1166,10 +1239,13 @@ export default function AlphaWaverseEngine() {
             </div>
           </button>
           
-          <div className="flex items-center gap-1.5 opacity-50 bg-white/5 px-2 py-1 rounded-md border border-white/5">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/80">{T.status}</span>
-          </div>
+          <button 
+            onClick={triggerCloudMigration}
+            className="flex items-center gap-1.5 opacity-80 bg-white/5 hover:bg-white/10 hover:border-primary/30 px-3 py-1.5 rounded-xl border border-white/10 transition-all text-[10px] font-black uppercase tracking-[0.2em] text-white/90"
+          >
+            <RefreshCw size={12} className={`${isSyncing ? 'animate-spin text-primary' : 'text-primary'}`} />
+            <span>{isSyncing ? 'SYNCING...' : 'CLOUD SYNC'}</span>
+          </button>
 
           <div className="flex flex-col items-end text-right">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/90">{user ? user.email : T.power}</span>
