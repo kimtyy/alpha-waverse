@@ -16,7 +16,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     category: 'Vintage Jazz / 1920s', 
     peerId: 'archive-78rpm-1',
     isrc: 'ISRC-USA-2026-101',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-1-2.mp3'
   },
   { 
     id: 'swing-duke-02', 
@@ -25,7 +25,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     category: 'Vintage Swing / 1920s', 
     peerId: 'archive-78rpm-2',
     isrc: 'ISRC-USA-2026-102',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
+    url: '/audio/A-Letter-I-Never-Sent---Clara-Paige-1-2.mp3'
   },
   { 
     id: 'chopin-noc-09', 
@@ -34,7 +34,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     category: 'Classical / Piano', 
     peerId: 'musopen-archive-1',
     isrc: 'ISRC-KOR-2026-021',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
+    url: '/audio/A-Letter-I-Never-Sent---Clara-Paige-1-1.mp3'
   },
   { 
     id: 'mozart-sym-40', 
@@ -43,7 +43,7 @@ export const WAVE_QUERY_DATA: SearchResult[] = [
     category: 'Classical / Orchestral', 
     peerId: 'musopen-archive-3',
     isrc: 'ISRC-KOR-2026-023',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-2-1.mp3'
   },
   { 
     id: 'beet-moon-01', 
