@@ -10,6 +10,24 @@ export interface SearchResult {
 
 export const WAVE_QUERY_DATA: SearchResult[] = [
   { 
+    id: 'jazz-louis-01', 
+    title: 'Louis Armstrong - St. Louis Blues', 
+    type: 'Music', 
+    category: 'Vintage Jazz / 1920s', 
+    peerId: 'archive-78rpm-1',
+    isrc: 'ISRC-USA-2026-101',
+    url: '/audio/-I-Still-Remember-Paris---Camille-Moreau-1-2.mp3'
+  },
+  { 
+    id: 'swing-duke-02', 
+    title: 'Duke Ellington - The Mooche', 
+    type: 'Music', 
+    category: 'Vintage Swing / 1920s', 
+    peerId: 'archive-78rpm-2',
+    isrc: 'ISRC-USA-2026-102',
+    url: '/audio/A-Letter-I-Never-Sent---Clara-Paige-1-2.mp3'
+  },
+  { 
     id: 'chopin-noc-09', 
     title: 'Chopin: Nocturne Op. 9 No. 2', 
     type: 'Music', 
