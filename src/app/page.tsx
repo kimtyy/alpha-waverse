@@ -296,6 +296,177 @@ export default function AlphaWaverseEngine() {
   const singleInputRef = useRef<HTMLInputElement>(null);
   const batchInputRef = useRef<HTMLInputElement>(null);
 
+  // P2P WebRTC State
+  const [isP2PHost, setIsP2PHost] = useState(false);
+  const [isP2PConnected, setIsP2PConnected] = useState(false);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
+
+  // WebRTC Signaling via Supabase Realtime
+  useEffect(() => {
+    if (!user?.email) return;
+
+    // Create a unique channel for this user's node network
+    const channelId = `p2p_mesh_${user.email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const p2pChannel = supabase.channel(channelId);
+
+    p2pChannel
+      .on('broadcast', { event: 'webrtc-signal' }, async ({ payload }) => {
+        const { sender, type, data } = payload;
+        
+        // Prevent listening to our own signals
+        if (sender === (isP2PHost ? 'host' : 'client')) return;
+
+        console.log(`[P2P Signaling] Received ${type} from ${sender}`);
+
+        if (type === 'offer') {
+          if (isP2PHost) {
+            const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            peerConnectionRef.current = pc;
+
+            pc.onicecandidate = (e) => {
+              if (e.candidate) {
+                p2pChannel.send({
+                  type: 'broadcast',
+                  event: 'webrtc-signal',
+                  payload: { sender: 'host', type: 'ice-candidate', data: e.candidate }
+                });
+              }
+            };
+
+            pc.ondatachannel = (event) => {
+              const dc = event.channel;
+              dataChannelRef.current = dc;
+              dc.onopen = () => setIsP2PConnected(true);
+              dc.onclose = () => setIsP2PConnected(false);
+
+              dc.onmessage = async (e) => {
+                const request = JSON.parse(e.data);
+                if (request.type === 'REQUEST_ASSET') {
+                  console.log(`[P2P Host] Asset requested: ${request.assetId}`);
+                  const fileBlob = await getAssetBlob(request.assetId);
+                  if (fileBlob) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const buffer = reader.result as ArrayBuffer;
+                      const CHUNK_SIZE = 16384;
+                      let offset = 0;
+                      
+                      // Notify start of transfer
+                      dc.send(JSON.stringify({ type: 'TRANSFER_START', assetId: request.assetId, size: buffer.byteLength }));
+
+                      while (offset < buffer.byteLength) {
+                        const chunk = buffer.slice(offset, offset + CHUNK_SIZE);
+                        dc.send(chunk);
+                        offset += CHUNK_SIZE;
+                      }
+                      
+                      // Notify end of transfer
+                      dc.send(JSON.stringify({ type: 'TRANSFER_END', assetId: request.assetId }));
+                    };
+                    reader.readAsArrayBuffer(fileBlob);
+                  }
+                }
+              };
+            };
+
+            await pc.setRemoteDescription(new RTCSessionDescription(data));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            p2pChannel.send({
+              type: 'broadcast',
+              event: 'webrtc-signal',
+              payload: { sender: 'host', type: 'answer', data: answer }
+            });
+          }
+        } else if (type === 'answer') {
+          if (!isP2PHost && peerConnectionRef.current) {
+            await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data));
+          }
+        } else if (type === 'ice-candidate') {
+          const pc = peerConnectionRef.current;
+          if (pc && data) {
+            await pc.addIceCandidate(new RTCIceCandidate(data));
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(p2pChannel);
+    };
+  }, [user, isP2PHost]);
+
+  const getAssetBlob = async (id: string): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const request = indexedDB.open('AlphaWaverseDB', 1);
+      request.onsuccess = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('assets')) { resolve(null); return; }
+        const tx = db.transaction('assets', 'readonly');
+        const req = tx.objectStore('assets').get(id);
+        req.onsuccess = () => resolve(req.result instanceof Blob ? req.result : null);
+        req.onerror = () => resolve(null);
+      };
+    });
+  };
+
+  const connectToP2PHost = async () => {
+    if (!user?.email) return;
+    const channelId = `p2p_mesh_${user.email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const p2pChannel = supabase.channel(channelId);
+
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    peerConnectionRef.current = pc;
+
+    pc.onicecandidate = (e) => {
+      if (e.candidate) {
+        p2pChannel.send({
+          type: 'broadcast',
+          event: 'webrtc-signal',
+          payload: { sender: 'client', type: 'ice-candidate', data: e.candidate }
+        });
+      }
+    };
+
+    const dc = pc.createDataChannel('fileTransfer');
+    dataChannelRef.current = dc;
+
+    let receivedChunks: ArrayBuffer[] = [];
+    let currentAssetId = '';
+
+    dc.onopen = () => setIsP2PConnected(true);
+    dc.onclose = () => setIsP2PConnected(false);
+    
+    dc.onmessage = async (e) => {
+      if (typeof e.data === 'string') {
+        const meta = JSON.parse(e.data);
+        if (meta.type === 'TRANSFER_START') {
+          receivedChunks = [];
+          currentAssetId = meta.assetId;
+          console.log(`[P2P Client] Receiving asset: ${currentAssetId}`);
+        } else if (meta.type === 'TRANSFER_END') {
+          console.log(`[P2P Client] Download complete: ${currentAssetId}`);
+          const completeBlob = new Blob(receivedChunks, { type: 'audio/mpeg' });
+          const blobUrl = URL.createObjectURL(completeBlob);
+          setCustomUrls(prev => ({ ...prev, [currentAssetId]: blobUrl }));
+        }
+      } else {
+        receivedChunks.push(e.data);
+      }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    p2pChannel.send({
+      type: 'broadcast',
+      event: 'webrtc-signal',
+      payload: { sender: 'client', type: 'offer', data: offer }
+    });
+  };
+
   // IndexedDB for Persistent Audio Storage
   const saveToIndexedDB = async (id: string, file: File) => {
     return new Promise((resolve, reject) => {
@@ -538,6 +709,10 @@ export default function AlphaWaverseEngine() {
 
     const playAudio = async () => {
       try {
+        if (!isP2PHost && isP2PConnected && dataChannelRef.current?.readyState === 'open') {
+          dataChannelRef.current.send(JSON.stringify({ type: 'REQUEST_ASSET', assetId: activeTrack.id }));
+        }
+
         // Resolve the most current URL (prioritize customUrls for user assets)
         const currentUrl = customUrls[activeTrack.id] || activeTrack.url;
         
@@ -1272,7 +1447,25 @@ export default function AlphaWaverseEngine() {
             </div>
           </button>
           
-          {/* Removed P2P Sync button to align with decentralized vision */}
+          <div className="flex items-center gap-2">
+            {/* P2P Host / Connect Controls */}
+            <button 
+              onClick={() => setIsP2PHost(!isP2PHost)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-[10px] font-black uppercase tracking-[0.2em] ${isP2PHost ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'}`}
+            >
+              <Cpu size={12} className={isP2PHost ? "animate-spin" : ""} />
+              <span>{isP2PHost ? (lang === 'KR' ? '호스트 노드 ON' : 'HOST NODE ON') : (lang === 'KR' ? '호스트 모드' : 'HOST MODE')}</span>
+            </button>
+
+            <button 
+              onClick={connectToP2PHost}
+              disabled={isP2PHost}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-[10px] font-black uppercase tracking-[0.2em] ${isP2PConnected ? 'bg-secondary/20 border-secondary text-secondary' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'} ${isP2PHost ? 'opacity-40 cursor-not-allowed' : ''}`}
+            >
+              <Globe size={12} className={isP2PConnected ? "animate-pulse" : ""} />
+              <span>{isP2PConnected ? (lang === 'KR' ? 'P2P 연결됨' : 'P2P CONNECTED') : (lang === 'KR' ? 'P2P 연결' : 'P2P CONNECT')}</span>
+            </button>
+          </div>
 
           <div className="flex flex-col items-end text-right">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/90">{user ? user.email : T.power}</span>
