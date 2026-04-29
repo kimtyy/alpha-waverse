@@ -588,46 +588,31 @@ export default function AlphaWaverseEngine() {
 
   // Zero Upload: Asset binaries remain securely stored in IndexedDB. Only metadata is synced.
 
-  // Load custom assets from Supabase on Login
+  // Load ALL P2P network assets from the global tracker (DHT)
   useEffect(() => {
-    if (!user?.email) return;
-
     const loadCloudAssets = async () => {
       try {
         const { data: cloudAssets, error } = await supabase
           .from('p2p_assets')
-          .select('*')
-          .eq('node_owner', user.email);
+          .select('*');
 
         if (!error && cloudAssets && cloudAssets.length > 0) {
           const ids: string[] = [];
           const titlesMap: Record<string, string> = {};
           const producersMap: Record<string, string> = {};
-          const urlMap: Record<string, string> = {};
 
           for (const asset of cloudAssets) {
             ids.push(asset.asset_id);
             titlesMap[asset.asset_id] = `${asset.title} / ${asset.artist || 'Unknown'} / ${asset.producer || 'Unknown'}`;
             producersMap[asset.asset_id] = asset.producer || 'Unknown';
-            
-            // Get Public Cloud Storage URL
-            const { data: publicUrlData } = supabase.storage
-              .from('assets')
-              .getPublicUrl(`${asset.asset_id}`);
-            
-            if (publicUrlData?.publicUrl) {
-              urlMap[asset.asset_id] = publicUrlData.publicUrl;
-            }
           }
 
-          // Merge without losing current local assets
           setOwnedAssets(prev => Array.from(new Set([...ids, ...prev])));
           setCustomTitles(prev => ({ ...titlesMap, ...prev }));
           setCustomProducers(prev => ({ ...producersMap, ...prev }));
-          setCustomUrls(prev => ({ ...urlMap, ...prev }));
         }
       } catch (err) {
-        console.error("Failed to load cloud assets", err);
+        console.error("Failed to load global P2P assets", err);
       }
     };
     loadCloudAssets();
