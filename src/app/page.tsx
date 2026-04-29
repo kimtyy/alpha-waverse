@@ -586,57 +586,7 @@ export default function AlphaWaverseEngine() {
     loadAllCustomUrls();
   }, []);
 
-  // NEW: Automatic Background Migration of Local Assets to Cloud
-  useEffect(() => {
-    if (!user?.email) return;
-
-    const migrateToCloud = async () => {
-      const savedOwned = localStorage.getItem('alpha_waverse_owned');
-      if (savedOwned) {
-        const ids = JSON.parse(savedOwned) as string[];
-        for (const id of ids) {
-          if (id.startsWith('user-asset-') || id.startsWith('batch-')) {
-            try {
-              const request = indexedDB.open('AlphaWaverseDB', 1);
-              request.onsuccess = () => {
-                const db = request.result;
-                if (!db.objectStoreNames.contains('assets')) return;
-                const tx = db.transaction('assets', 'readonly');
-                const getReq = tx.objectStore('assets').get(id);
-                getReq.onsuccess = async () => {
-                  const file = getReq.result as File;
-                  if (file) {
-                    // Upload to Cloud
-                    const { data: uploadData, error: uploadError } = await supabase.storage
-                      .from('assets')
-                      .upload(`${id}`, file, { upsert: true });
-
-                    if (!uploadError) {
-                      // Parse title/artist safely
-                      const { title, artist } = parseFilename(file.name);
-
-                      await supabase.from('p2p_assets').upsert({
-                        asset_id: id,
-                        node_owner: user.email,
-                        title: title,
-                        artist: artist,
-                        producer: 'Alpha Owner',
-                        file_type: file.type,
-                        node_ip: 'p2p-node-gateway'
-                      });
-                    }
-                  }
-                };
-              };
-            } catch (err) {
-              console.error(`Automatic Migration failed for ${id}:`, err);
-            }
-          }
-        }
-      }
-    };
-    migrateToCloud();
-  }, [user]);
+  // Zero Upload: Asset binaries remain securely stored in IndexedDB. Only metadata is synced.
 
   // Load custom assets from Supabase on Login
   useEffect(() => {
@@ -863,25 +813,8 @@ export default function AlphaWaverseEngine() {
         
         try {
           await saveToIndexedDB(newId, file);
-          let finalUrl = URL.createObjectURL(file);
-          
-          // Cloud Upload to Supabase Storage
-          try {
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('assets')
-              .upload(`${newId}`, file, { upsert: true });
-
-            if (!uploadError) {
-              const { data: publicUrlData } = supabase.storage
-                .from('assets')
-                .getPublicUrl(`${newId}`);
-              if (publicUrlData?.publicUrl) {
-                finalUrl = publicUrlData.publicUrl;
-              }
-            }
-          } catch (cloudErr) {
-            console.error("Cloud upload failed for fast flow", cloudErr);
-          }
+          // Zero-Upload: Binary stays offline, URL resolves safely via Blob URL
+          const finalUrl = URL.createObjectURL(file);
 
           urlMap[newId] = finalUrl;
           newAssets.push(newId);
