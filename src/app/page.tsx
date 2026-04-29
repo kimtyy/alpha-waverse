@@ -590,6 +590,10 @@ export default function AlphaWaverseEngine() {
 
   // Load ALL P2P network assets from the global tracker (DHT)
   useEffect(() => {
+    if (user?.email) {
+      setIsP2PHost(true); // Automatically become a data node if logged in
+    }
+
     const loadCloudAssets = async () => {
       try {
         const { data: cloudAssets, error } = await supabase
@@ -644,7 +648,12 @@ export default function AlphaWaverseEngine() {
 
     const playAudio = async () => {
       try {
-        if (!isP2PHost && isP2PConnected && dataChannelRef.current?.readyState === 'open') {
+        if (!isP2PHost && !isP2PConnected && activeTrack.id.startsWith('user-asset-')) {
+          console.log(`[P2P Auto-Pilot] Establishing direct stream tunnel...`);
+          await connectToP2PHost();
+        }
+
+        if (!isP2PHost && dataChannelRef.current?.readyState === 'open') {
           dataChannelRef.current.send(JSON.stringify({ type: 'REQUEST_ASSET', assetId: activeTrack.id }));
         }
 
@@ -1365,25 +1374,7 @@ export default function AlphaWaverseEngine() {
             </div>
           </button>
           
-          <div className="flex items-center gap-2">
-            {/* P2P Host / Connect Controls */}
-            <button 
-              onClick={() => setIsP2PHost(!isP2PHost)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-[10px] font-black uppercase tracking-[0.2em] ${isP2PHost ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'}`}
-            >
-              <Cpu size={12} className={isP2PHost ? "animate-spin" : ""} />
-              <span>{isP2PHost ? (lang === 'KR' ? '호스트 노드 ON' : 'HOST NODE ON') : (lang === 'KR' ? '호스트 모드' : 'HOST MODE')}</span>
-            </button>
-
-            <button 
-              onClick={connectToP2PHost}
-              disabled={isP2PHost}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-[10px] font-black uppercase tracking-[0.2em] ${isP2PConnected ? 'bg-secondary/20 border-secondary text-secondary' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'} ${isP2PHost ? 'opacity-40 cursor-not-allowed' : ''}`}
-            >
-              <Globe size={12} className={isP2PConnected ? "animate-pulse" : ""} />
-              <span>{isP2PConnected ? (lang === 'KR' ? 'P2P 연결됨' : 'P2P CONNECTED') : (lang === 'KR' ? 'P2P 연결' : 'P2P CONNECT')}</span>
-            </button>
-          </div>
+          {/* Zero UI Friction: P2P Host & Client negotiations handle silently in the background */}
 
           <div className="flex flex-col items-end text-right">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/90">{user ? user.email : T.power}</span>
