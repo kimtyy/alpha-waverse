@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward, SkipBack,
   Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight, ChevronDown, Home, ArrowLeft,
@@ -15,7 +15,7 @@ import { supabase } from '@/utils/supabase';
 export default function AlphaWaverseEngine() {
   // Localization Engine
   const [lang, setLang] = useState<'EN' | 'KR'>('EN');
-  
+
   const T = {
     EN: {
       wealth: "Sovereign Wealth",
@@ -119,7 +119,7 @@ export default function AlphaWaverseEngine() {
   // Navigation & Search State
   const [view, setView] = useState<'RADAR' | 'LIKES' | 'NODE'>('RADAR');
   const [search, setSearch] = useState('');
-  
+
   // Playback State
   const [activeTrack, setActiveTrack] = useState<SearchResult | null>(null);
   const [playlist, setPlaylist] = useState<SearchResult[]>([]);
@@ -133,7 +133,7 @@ export default function AlphaWaverseEngine() {
   const [isUploading, setIsUploading] = useState(false);
   const [showVision, setShowVision] = useState(false);
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
-  
+
   // Sovereign Auth State
   const [user, setUser] = useState<{ email: string; name: string; avatar?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -209,18 +209,18 @@ export default function AlphaWaverseEngine() {
 
   const handleSaveEdit = () => {
     if (!editingAssetId) return;
-    
+
     const finalTitle = editArtist ? `${editTitle} / ${editArtist}` : editTitle;
     setCustomTitles(prev => ({ ...prev, [editingAssetId]: finalTitle }));
     setCustomProducers(prev => ({ ...prev, [editingAssetId]: editProducer }));
-    
+
     setEditingAssetId(null);
     alert(lang === 'KR' ? "자산 메타데이터가 수정되었습니다." : "Asset metadata updated.");
   };
 
   const handleBatchSave = () => {
     if (selectedTrackIds.length === 0) return;
-    
+
     setCustomTitles(prev => {
       const updated = { ...prev };
       selectedTrackIds.forEach(id => {
@@ -228,7 +228,7 @@ export default function AlphaWaverseEngine() {
         if (currentTitle.includes('/')) {
           currentTitle = currentTitle.split('/')[0].trim();
         }
-        
+
         if (batchArtist) {
           updated[id] = `${currentTitle} / ${batchArtist}`;
         } else {
@@ -252,7 +252,7 @@ export default function AlphaWaverseEngine() {
         return updated;
       });
     }
-    
+
     setShowBatchEditModal(false);
     setBatchArtist('');
     setBatchProducer('');
@@ -277,7 +277,7 @@ export default function AlphaWaverseEngine() {
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
-  
+
   // Local Filtering States
   const [studioSearch, setStudioSearch] = useState('');
   const [vaultSearch, setVaultSearch] = useState('');
@@ -313,7 +313,7 @@ export default function AlphaWaverseEngine() {
     p2pChannel
       .on('broadcast', { event: 'webrtc-signal' }, async ({ payload }) => {
         const { sender, type, data } = payload;
-        
+
         // Prevent listening to our own signals
         if (sender === (isP2PHost ? 'host' : 'client')) return;
 
@@ -351,7 +351,7 @@ export default function AlphaWaverseEngine() {
                       const buffer = reader.result as ArrayBuffer;
                       const CHUNK_SIZE = 16384;
                       let offset = 0;
-                      
+
                       // Notify start of transfer
                       dc.send(JSON.stringify({ type: 'TRANSFER_START', assetId: request.assetId, size: buffer.byteLength }));
 
@@ -360,7 +360,7 @@ export default function AlphaWaverseEngine() {
                         dc.send(chunk);
                         offset += CHUNK_SIZE;
                       }
-                      
+
                       // Notify end of transfer
                       dc.send(JSON.stringify({ type: 'TRANSFER_END', assetId: request.assetId }));
                     };
@@ -438,7 +438,7 @@ export default function AlphaWaverseEngine() {
 
     dc.onopen = () => setIsP2PConnected(true);
     dc.onclose = () => setIsP2PConnected(false);
-    
+
     dc.onmessage = async (e) => {
       if (typeof e.data === 'string') {
         const meta = JSON.parse(e.data);
@@ -467,26 +467,49 @@ export default function AlphaWaverseEngine() {
     });
   };
 
-  // IndexedDB for Persistent Audio Storage
-  const saveToIndexedDB = async (id: string, file: File) => {
+  // IndexedDB Singleton DB Cache to prevent blocking I/O
+  const dbRef = useRef<IDBDatabase | null>(null);
+
+  const getDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
+      if (dbRef.current) {
+        resolve(dbRef.current);
+        return;
+      }
       const request = indexedDB.open('AlphaWaverseDB', 1);
-      request.onupgradeneeded = () => request.result.createObjectStore('assets');
-      request.onsuccess = () => {
+      request.onupgradeneeded = () => {
         const db = request.result;
-        const tx = db.transaction('assets', 'readwrite');
-        tx.objectStore('assets').put(file, id);
-        tx.oncomplete = () => resolve(true);
+        if (!db.objectStoreNames.contains('assets')) {
+          db.createObjectStore('assets');
+        }
+      };
+      request.onsuccess = () => {
+        dbRef.current = request.result;
+        resolve(request.result);
       };
       request.onerror = () => reject(request.error);
     });
   };
 
+  const saveToIndexedDB = async (id: string, file: File) => {
+    try {
+      const db = await getDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('assets', 'readwrite');
+        tx.objectStore('assets').put(file, id);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (e) {
+      console.error("saveToIndexedDB Error", e);
+      return false;
+    }
+  };
+
   const loadFromIndexedDB = async (id: string) => {
-    return new Promise<string | null>((resolve) => {
-      const request = indexedDB.open('AlphaWaverseDB', 1);
-      request.onsuccess = () => {
-        const db = request.result;
+    try {
+      const db = await getDB();
+      return new Promise<string | null>((resolve) => {
         if (!db.objectStoreNames.contains('assets')) { resolve(null); return; }
         const tx = db.transaction('assets', 'readonly');
         const getReq = tx.objectStore('assets').get(id);
@@ -497,9 +520,11 @@ export default function AlphaWaverseEngine() {
             resolve(null);
           }
         };
-      };
-      request.onerror = () => resolve(null);
-    });
+        tx.onerror = () => resolve(null);
+      });
+    } catch (e) {
+      return null;
+    }
   };
 
   // Search Debouncing Logic
@@ -515,7 +540,7 @@ export default function AlphaWaverseEngine() {
   useEffect(() => {
     const savedLikes = localStorage.getItem('alpha_waverse_likes');
     if (savedLikes) setLikedTracks(JSON.parse(savedLikes));
-    
+
     const savedOwned = localStorage.getItem('alpha_waverse_owned');
     if (savedOwned) setOwnedAssets(JSON.parse(savedOwned));
 
@@ -565,6 +590,9 @@ export default function AlphaWaverseEngine() {
     const savedLegacy = localStorage.getItem('alpha_waverse_legacy_ids');
     if (savedLegacy) setLegacyAssetIds(JSON.parse(savedLegacy));
 
+    const savedSigs = localStorage.getItem('alpha_waverse_registered_filenames');
+    if (savedSigs) setRegisteredFilenames(new Set(JSON.parse(savedSigs)));
+
     const savedProducer = localStorage.getItem('alpha_waverse_default_producer');
     if (savedProducer) setDefaultProducer(savedProducer);
 
@@ -590,10 +618,6 @@ export default function AlphaWaverseEngine() {
 
   // Load ALL P2P network assets from the global tracker (DHT)
   useEffect(() => {
-    if (user?.email) {
-      setIsP2PHost(true); // Automatically become a data node if logged in
-    }
-
     const loadCloudAssets = async () => {
       try {
         const { data: cloudAssets, error } = await supabase
@@ -619,8 +643,11 @@ export default function AlphaWaverseEngine() {
         console.error("Failed to load global P2P assets", err);
       }
     };
+    
     loadCloudAssets();
-  }, [user]);
+    const pollInterval = setInterval(loadCloudAssets, 5000);
+    return () => clearInterval(pollInterval);
+  }, []);
 
   // Economy Stats Simulation
   const [minedShares, setMinedShares] = useState(124.5931);
@@ -648,18 +675,13 @@ export default function AlphaWaverseEngine() {
 
     const playAudio = async () => {
       try {
-        if (!isP2PHost && !isP2PConnected && activeTrack.id.startsWith('user-asset-')) {
-          console.log(`[P2P Auto-Pilot] Establishing direct stream tunnel...`);
-          await connectToP2PHost();
-        }
-
-        if (!isP2PHost && dataChannelRef.current?.readyState === 'open') {
+        if (!isP2PHost && isP2PConnected && dataChannelRef.current?.readyState === 'open') {
           dataChannelRef.current.send(JSON.stringify({ type: 'REQUEST_ASSET', assetId: activeTrack.id }));
         }
 
         // Resolve the most current URL (prioritize customUrls for user assets)
         const currentUrl = customUrls[activeTrack.id] || activeTrack.url;
-        
+
         if (audioRef.current!.src !== currentUrl) {
           audioRef.current!.src = currentUrl;
           audioRef.current!.load();
@@ -712,7 +734,7 @@ export default function AlphaWaverseEngine() {
   const parseFilename = (filename: string) => {
     // Remove extension
     const name = filename.replace(/\.[^/.]+$/, "");
-    
+
     // NEW: Specialized Korean Artist_Title_Noise parser (e.g., 백하린_강변의 추억_11-11)
     if (name.includes('_')) {
       const parts = name.split('_');
@@ -776,8 +798,8 @@ export default function AlphaWaverseEngine() {
     const duplicatesCount = files.length - newFiles.length;
 
     if (duplicatesCount > 0) {
-      alert(lang === 'KR' 
-        ? `${duplicatesCount}개의 파일은 이미 등록되어 있어 제외되었습니다.` 
+      alert(lang === 'KR'
+        ? `${duplicatesCount}개의 파일은 이미 등록되어 있어 제외되었습니다.`
         : `${duplicatesCount} duplicate files were skipped.`);
     }
 
@@ -788,74 +810,84 @@ export default function AlphaWaverseEngine() {
 
     // NEW: Immediate Batch Registration Flow with Cloud Sync
     setIsUploading(true);
-    
+
     // Process all files in background
     setTimeout(async () => {
-      const newAssets = [];
+      const newAssets: string[] = [];
       const newSigs = new Set(registeredFilenames);
       const updatedTitles = { ...customTitles };
       const updatedProducers = { ...customProducers };
       const urlMap: Record<string, string> = {};
+      const cloudPayloads: any[] = [];
 
-      for (const file of newFiles) {
+      // Generate IDs and metadata upfront
+      const fileData = newFiles.map(file => {
         const newId = `user-asset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        const isVideo = file.type.startsWith('video/');
-        
-        // Smart Parsing
         const { title, artist } = parseFilename(file.name);
         const fullTitle = `${title} / ${artist} / ${defaultProducer}`;
-        
-        try {
-          await saveToIndexedDB(newId, file);
-          // Zero-Upload: Binary stays offline, URL resolves safely via Blob URL
-          const finalUrl = URL.createObjectURL(file);
+        return { file, newId, title, artist, fullTitle };
+      });
 
-          urlMap[newId] = finalUrl;
-          newAssets.push(newId);
-          newSigs.add(`${file.name}-${file.size}`);
-          
-          updatedTitles[newId] = fullTitle;
-          updatedProducers[newId] = defaultProducer;
+      try {
+        // 1. Parallel IndexedDB Saves (Much faster for large files)
+        await Promise.all(fileData.map(d => saveToIndexedDB(d.newId, d.file)));
 
-          // P2P Tracker Metadata Broadcast
+        // 2. Map local state updates & cloud payloads
+        for (const d of fileData) {
+          const finalUrl = URL.createObjectURL(d.file);
+          urlMap[d.newId] = finalUrl;
+          newAssets.push(d.newId);
+          newSigs.add(`${d.file.name}-${d.file.size}`);
+          updatedTitles[d.newId] = d.fullTitle;
+          updatedProducers[d.newId] = defaultProducer;
+
           if (user?.email) {
-            await supabase.from('p2p_assets').upsert({
-              asset_id: newId,
+            cloudPayloads.push({
+              asset_id: d.newId,
               node_owner: user.email,
-              title: title,
-              artist: artist,
+              title: d.title,
+              artist: d.artist,
               producer: defaultProducer,
-              file_type: file.type,
+              file_type: d.file.type,
               node_ip: 'p2p-node-gateway'
             });
           }
-
-        } catch (err) {
-          console.error("Fast Registration Failed", err);
         }
+
+        // 3. One single batch request to Cloud Tracker (Super Fast!)
+        if (cloudPayloads.length > 0) {
+          await supabase.from('p2p_assets').upsert(cloudPayloads);
+        }
+
+      } catch (err) {
+        console.error("Fast Parallel Registration Failed", err);
       }
-      
+
       setCustomUrls(prev => ({ ...prev, ...urlMap }));
       setCustomTitles(updatedTitles);
       setCustomProducers(updatedProducers);
       localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
       localStorage.setItem('alpha_waverse_custom_producers', JSON.stringify(updatedProducers));
-      
+
       setRegisteredFilenames(newSigs);
-      setOwnedAssets(prev => [...newAssets, ...prev]);
+      localStorage.setItem('alpha_waverse_registered_filenames', JSON.stringify(Array.from(newSigs)));
+
+      setOwnedAssets(prev => {
+        const updated = [...newAssets, ...prev];
+        localStorage.setItem('alpha_waverse_owned', JSON.stringify(updated));
+        return updated;
+      });
       setIsUploading(false);
-      
-      alert(lang === 'KR' 
-        ? `${newAssets.length}개의 자산이 등록되었습니다. 전 세계 노드와 실시간 연동됩니다.` 
-        : `${newAssets.length} assets registered globally across node networks.`);
-    }, 1000);
-    
+
+      // No blocking alerts
+    }, 10);
+
     e.target.value = '';
   };
 
   const toggleSelection = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setSelectedTrackIds(prev => 
+    setSelectedTrackIds(prev =>
       prev.includes(id) ? prev.filter(tid => tid !== id) : [...prev, id]
     );
   };
@@ -863,11 +895,11 @@ export default function AlphaWaverseEngine() {
   const playSelected = (list: any[], shouldShuffle = false) => {
     const selected = list.filter(t => selectedTrackIds.includes(t.id));
     let pool = selected.length > 0 ? selected : list;
-    
+
     if (shouldShuffle && pool.length > 0) {
       pool = [...pool].sort(() => Math.random() - 0.5);
     }
-    
+
     if (pool.length > 0) {
       setPlaylist(pool);
       setActiveTrack(pool[0]);
@@ -891,7 +923,7 @@ export default function AlphaWaverseEngine() {
 
   const deleteSelected = () => {
     if (selectedTrackIds.length === 0) return;
-    if (window.confirm(lang === 'KR' ? `${selectedTrackIds.length}개의 자산을 삭제하시겠습니까?` : `Delete ${selectedTrackIds.length} assets?` )) {
+    if (window.confirm(lang === 'KR' ? `${selectedTrackIds.length}개의 자산을 삭제하시겠습니까?` : `Delete ${selectedTrackIds.length} assets?`)) {
       setOwnedAssets(prev => prev.filter(id => !selectedTrackIds.includes(id)));
       setSelectedTrackIds([]);
     }
@@ -901,7 +933,7 @@ export default function AlphaWaverseEngine() {
     if (!importIsrc) return;
     setIsSyncing(true);
     setShowImportModal(false);
-    
+
     setTimeout(() => {
       const found = WAVE_QUERY_DATA.find(t => t.isrc.includes(importIsrc));
       if (found) {
@@ -922,10 +954,10 @@ export default function AlphaWaverseEngine() {
 
   const handleBatchUpload = async () => {
     if (batchFiles.length === 0) return;
-    
+
     setIsUploading(true);
     setShowBatchModal(false);
-    
+
     setTimeout(async () => {
       const newAssets = [];
       const newSigs = new Set(registeredFilenames);
@@ -937,14 +969,14 @@ export default function AlphaWaverseEngine() {
         // Format: Title / Artist / Producer
         const baseTitle = file.name.split('.')[0];
         const fullTitle = `${baseTitle} / ${uploadArtist || "Unknown"} / ${uploadProducer || "Unknown"}`;
-        
+
         try {
           await saveToIndexedDB(newId, file);
           const localUrl = URL.createObjectURL(file);
           setCustomUrls(prev => ({ ...prev, [newId]: localUrl }));
           newAssets.push(newId);
           newSigs.add(`${file.name}-${file.size}`);
-          
+
           updatedTitles[newId] = fullTitle;
           if (uploadProducer) {
             updatedProducers[newId] = uploadProducer;
@@ -953,12 +985,12 @@ export default function AlphaWaverseEngine() {
           console.error("Batch Save Failed", err);
         }
       }
-      
+
       setCustomTitles(updatedTitles);
       setCustomProducers(updatedProducers);
       localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
       localStorage.setItem('alpha_waverse_custom_producers', JSON.stringify(updatedProducers));
-      
+
       setRegisteredFilenames(newSigs);
       setOwnedAssets(prev => [...newAssets, ...prev]);
       setIsUploading(false);
@@ -974,16 +1006,16 @@ export default function AlphaWaverseEngine() {
 
     setIsUploading(true);
     setShowUploadModal(false);
-    
+
     setTimeout(async () => {
       const newId = `user-asset-${Date.now()}`;
       const isVideo = uploadFile.type.startsWith('video/');
       const fullTitle = `${uploadTitle} / ${uploadArtist || 'Unknown'} / ${uploadProducer || 'Unknown'}`;
-      
+
       try {
         await saveToIndexedDB(newId, uploadFile);
         let finalUrl = URL.createObjectURL(uploadFile);
-        
+
         // Cloud Upload to Supabase
         try {
           const { data: uploadData, error: uploadError } = await supabase.storage
@@ -1003,13 +1035,13 @@ export default function AlphaWaverseEngine() {
         }
 
         setCustomUrls(prev => ({ ...prev, [newId]: finalUrl }));
-        
+
         setOwnedAssets(prev => [newId, ...prev]);
         setRegisteredFilenames(prev => new Set(prev).add(`${uploadFile.name}-${uploadFile.size}`));
         const updatedTitles = { ...customTitles, [newId]: fullTitle };
         setCustomTitles(updatedTitles);
         localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
-        
+
         if (uploadProducer) {
           const updatedProducers = { ...customProducers, [newId]: uploadProducer };
           setCustomProducers(updatedProducers);
@@ -1028,7 +1060,7 @@ export default function AlphaWaverseEngine() {
             node_ip: 'p2p-node-gateway'
           });
         }
-        
+
         setIsUploading(false);
 
         const newAsset = {
@@ -1040,7 +1072,7 @@ export default function AlphaWaverseEngine() {
           status: 'Certified',
           url: finalUrl
         };
-        
+
         setActiveTrack(newAsset as any);
         if (isVideo) {
           setShowVideoPlayer(newId);
@@ -1070,14 +1102,14 @@ export default function AlphaWaverseEngine() {
   const handleAITask = (type: 'SCORE' | 'MR' | 'LYRICS', targetTrack?: SearchResult) => {
     const trackToUse = targetTrack || activeTrack;
     if (!trackToUse) return;
-    
+
     setAiTaskType(type);
     setIsProcessingAI(true);
-    
+
     setTimeout(() => {
       setIsProcessingAI(false);
       const trackId = trackToUse.id;
-      
+
       if (type === 'SCORE') {
         setGeneratedAssets(prev => {
           const current = prev[trackId] || { scores: [], mrs: [] };
@@ -1106,7 +1138,7 @@ export default function AlphaWaverseEngine() {
       } else if (type === 'LYRICS') {
         alert(lang === 'KR' ? "AI가 가사를 완벽하게 분석했습니다!\n\n[가사 미리보기]\n이 푸른 바다의 파도 소리처럼\n우리의 시간은 끝없이 흐르네..." : "AI analyzed the lyrics successfully!\n\n[Preview]\nLike the waves of the blue sea,\nOur time flows endlessly...");
       }
-      
+
       setAiTaskType(null);
     }, 3500);
   };
@@ -1128,13 +1160,13 @@ export default function AlphaWaverseEngine() {
       const savedOwned = localStorage.getItem('alpha_waverse_owned');
       if (savedOwned) {
         const ids = JSON.parse(savedOwned) as string[];
-        
+
         const idsToMigrate = ids.filter(id => id.startsWith('user-asset-') || id.startsWith('batch-'));
         const chunkSize = 5;
 
         for (let i = 0; i < idsToMigrate.length; i += chunkSize) {
           const chunk = idsToMigrate.slice(i, i + chunkSize);
-          
+
           await Promise.all(chunk.map(async (id) => {
             try {
               const file = await new Promise<File | null>((resolve) => {
@@ -1183,12 +1215,12 @@ export default function AlphaWaverseEngine() {
           }));
         }
       }
-      
+
       setCustomTitles(updatedTitles);
       localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
 
-      alert(lang === 'KR' 
-        ? `동기화 완료: ${successCount}곡 성공, ${failCount}곡 실패.` 
+      alert(lang === 'KR'
+        ? `동기화 완료: ${successCount}곡 성공, ${failCount}곡 실패.`
         : `Sync complete: ${successCount} succeeded, ${failCount} failed.`);
     } catch (err: any) {
       alert(`Sync Error: ${err.message}`);
@@ -1215,7 +1247,7 @@ export default function AlphaWaverseEngine() {
       delete newTitles[id];
       setCustomTitles(newTitles);
       localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(newTitles));
-      
+
       const newUrls = { ...customUrls };
       delete newUrls[id];
       setCustomUrls(newUrls);
@@ -1229,7 +1261,7 @@ export default function AlphaWaverseEngine() {
       setCustomUrls({});
       setCustomProducers({});
       setRegisteredFilenames(new Set());
-      
+
       localStorage.removeItem('alpha_waverse_owned');
       localStorage.removeItem('alpha_waverse_custom_titles');
       localStorage.removeItem('alpha_waverse_custom_producers');
@@ -1253,7 +1285,7 @@ export default function AlphaWaverseEngine() {
 
   // Load custom titles for uploaded assets
 
-  
+
 
 
   const ownedDisplayList = useMemo(() => {
@@ -1263,25 +1295,25 @@ export default function AlphaWaverseEngine() {
     return baseIds.map(id => {
       const original = WAVE_QUERY_DATA.find(t => t.id === id);
       if (original) return original;
-      
+
       const isVideoId = id.includes('video') || (customTitles[id] && customTitles[id].toLowerCase().includes('video')); // Fallback detection
-      
+
       return {
         id,
         title: customTitles[id] || (lang === 'KR' ? "신규 등록 자산" : "New Registered Asset"),
         type: (isVideoId ? 'Video' : 'Music') as any,
-        category: isVideoId 
-          ? (lang === 'KR' ? '마스터 영상 (YouTube)' : 'Master Video (YouTube)') 
-          : id.startsWith('mr-') 
+        category: isVideoId
+          ? (lang === 'KR' ? '마스터 영상 (YouTube)' : 'Master Video (YouTube)')
+          : id.startsWith('mr-')
             ? (lang === 'KR' ? 'AI 하이브리드 MR' : 'AI Hybrid Engine')
             : id.startsWith('legacy-asset-')
               ? (lang === 'KR' ? '레거시 IP 통합 자산' : 'Legacy IP Integrated Asset')
-              : customProducers[id] 
+              : customProducers[id]
                 ? (lang === 'KR' ? `${customProducers[id]}의 자산` : `Asset of ${customProducers[id]}`)
                 : (lang === 'KR' ? '등록자의 자산' : "Registrant's Asset"),
         isrc: id.startsWith('legacy-asset-') ? id.split('-')[2] : `KR-AWV-26-${id.slice(-5).toUpperCase()}`,
         status: 'Certified',
-        url: customUrls[id] || '' 
+        url: customUrls[id] || ''
       };
     });
   }, [ownedAssets, likedTracks, showUnifiedLibrary, customTitles, customUrls, customProducers, lang]);
@@ -1289,8 +1321,8 @@ export default function AlphaWaverseEngine() {
   const filteredOwnedList = useMemo(() => {
     if (!studioSearch) return ownedDisplayList;
     const term = studioSearch.toLowerCase();
-    return ownedDisplayList.filter(t => 
-      t.title.toLowerCase().includes(term) || 
+    return ownedDisplayList.filter(t =>
+      t.title.toLowerCase().includes(term) ||
       t.category.toLowerCase().includes(term) ||
       t.isrc.toLowerCase().includes(term)
     );
@@ -1300,12 +1332,12 @@ export default function AlphaWaverseEngine() {
     // Combine Global Data + Owned Assets for the Vault pool
     const pool = [...WAVE_QUERY_DATA, ...ownedDisplayList];
     const uniquePool = Array.from(new Map(pool.map(item => [item.id, item])).values());
-    
+
     const vaultPool = uniquePool.filter(item => likedTracks.includes(item.id));
     if (!vaultSearch) return vaultPool;
     const term = vaultSearch.toLowerCase();
-    return vaultPool.filter(t => 
-      t.title.toLowerCase().includes(term) || 
+    return vaultPool.filter(t =>
+      t.title.toLowerCase().includes(term) ||
       t.category.toLowerCase().includes(term) ||
       t.isrc.toLowerCase().includes(term)
     );
@@ -1316,7 +1348,7 @@ export default function AlphaWaverseEngine() {
   const toggleSelectAll = (list: any[]) => {
     const allIds = list.map(t => t.id);
     const allSelected = allIds.every(id => selectedTrackIds.includes(id));
-    
+
     if (allSelected) {
       setSelectedTrackIds(prev => prev.filter(id => !allIds.includes(id)));
     } else {
@@ -1327,15 +1359,15 @@ export default function AlphaWaverseEngine() {
   const filteredResults = useMemo(() => {
     if (!debouncedSearchTerm) return [];
     const term = debouncedSearchTerm.toLowerCase();
-    
+
     // Combine Global Data + User's Sovereign Assets
     const pool = [...WAVE_QUERY_DATA, ...ownedDisplayList];
-    
+
     // De-duplicate if needed (though IDs should be unique)
     const uniquePool = Array.from(new Map(pool.map(item => [item.id, item])).values());
 
-    return uniquePool.filter(track => 
-      track.title.toLowerCase().includes(term) || 
+    return uniquePool.filter(track =>
+      track.title.toLowerCase().includes(term) ||
       track.category.toLowerCase().includes(term) ||
       track.isrc.toLowerCase().includes(term)
     );
@@ -1343,15 +1375,15 @@ export default function AlphaWaverseEngine() {
 
   return (
     <main className="h-[100dvh] w-full bg-black text-white selection:bg-primary/30 flex flex-col items-center relative overflow-hidden font-sans">
-      
+
       {/* Background Aura */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <motion.div 
+        <motion.div
           animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
           transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
           className="absolute -top-[20%] -right-[10%] w-[80%] h-[80%] bg-primary/10 blur-[180px] rounded-full"
         />
-        <motion.div 
+        <motion.div
           animate={{ scale: [1, 1.3, 1], opacity: [0.05, 0.15, 0.05] }}
           transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
           className="absolute -bottom-[10%] -left-[10%] w-[60%] h-[60%] bg-secondary/10 blur-[150px] rounded-full"
@@ -1361,7 +1393,7 @@ export default function AlphaWaverseEngine() {
       {/* FIXED TOP HUD */}
       <div className="w-full z-50 px-6 pt-6 md:pt-10 flex flex-col items-center">
         <div className="w-full max-w-5xl flex justify-between items-center premium-glass px-5 py-3 rounded-2xl border border-white/10 backdrop-blur-3xl shadow-2xl bg-black/40">
-          <button 
+          <button
             onClick={() => setShowTokenomicsModal(true)}
             className="flex flex-col items-start hover:scale-105 active:scale-95 transition-all text-left"
           >
@@ -1373,8 +1405,26 @@ export default function AlphaWaverseEngine() {
               <span className="text-[11px] font-black text-primary">α</span>
             </div>
           </button>
-          
-          {/* Zero UI Friction: P2P Host & Client negotiations handle silently in the background */}
+
+          <div className="flex items-center gap-2">
+            {/* P2P Host / Connect Controls */}
+            <button
+              onClick={() => setIsP2PHost(!isP2PHost)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-[10px] font-black uppercase tracking-[0.2em] ${isP2PHost ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'}`}
+            >
+              <Cpu size={12} className={isP2PHost ? "animate-spin" : ""} />
+              <span>{isP2PHost ? (lang === 'KR' ? '호스트 노드 ON' : 'HOST NODE ON') : (lang === 'KR' ? '호스트 모드' : 'HOST MODE')}</span>
+            </button>
+
+            <button
+              onClick={connectToP2PHost}
+              disabled={isP2PHost}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-[10px] font-black uppercase tracking-[0.2em] ${isP2PConnected ? 'bg-secondary/20 border-secondary text-secondary' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'} ${isP2PHost ? 'opacity-40 cursor-not-allowed' : ''}`}
+            >
+              <Globe size={12} className={isP2PConnected ? "animate-pulse" : ""} />
+              <span>{isP2PConnected ? (lang === 'KR' ? 'P2P 연결됨' : 'P2P CONNECTED') : (lang === 'KR' ? 'P2P 연결' : 'P2P CONNECT')}</span>
+            </button>
+          </div>
 
           <div className="flex flex-col items-end text-right">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/90">{user ? user.email : T.power}</span>
@@ -1383,12 +1433,12 @@ export default function AlphaWaverseEngine() {
                 <span className="text-base md:text-xl font-extrabold tabular-nums tracking-tight text-white">{hashPower.toFixed(1)}</span>
                 <Zap size={12} className="text-secondary animate-pulse" />
               </div>
-              
+
               <div className="w-[1px] h-6 bg-white/10" />
 
               {user ? (
-                <button 
-                  onClick={() => { if(window.confirm(lang === 'KR' ? "로그아웃 하시겠습니까?" : "Logout?")) handleLogout(); }}
+                <button
+                  onClick={() => { if (window.confirm(lang === 'KR' ? "로그아웃 하시겠습니까?" : "Logout?")) handleLogout(); }}
                   className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary hover:bg-primary hover:text-black transition-all group overflow-hidden"
                 >
                   {user.avatar ? (
@@ -1398,7 +1448,7 @@ export default function AlphaWaverseEngine() {
                   )}
                 </button>
               ) : (
-                <button 
+                <button
                   onClick={() => setShowAuthModal(true)}
                   className="px-3 py-1.5 rounded-xl bg-white text-black text-[8px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_5px_15px_rgba(255,255,255,0.2)] flex items-center gap-1.5"
                 >
@@ -1413,10 +1463,10 @@ export default function AlphaWaverseEngine() {
 
       {/* MAIN VIEWPORT */}
       <div className="flex-1 w-full max-w-4xl relative z-10 flex flex-col items-center justify-center px-6 overflow-hidden">
-        
+
         <AnimatePresence mode="wait">
           {view === 'RADAR' && (
-            <motion.div 
+            <motion.div
               key="radar"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1424,12 +1474,12 @@ export default function AlphaWaverseEngine() {
               className="w-full h-full flex flex-col items-center pt-10 relative overflow-hidden"
             >
               {/* PERSISTENT SEARCH HEADER */}
-              <motion.div 
+              <motion.div
                 layout
                 className={`w-full flex flex-col items-center gap-8 md:gap-12 transition-all duration-500 ${search ? 'mb-6' : 'mt-[10vh] mb-12'}`}
               >
                 {!search && (
-                  <motion.h1 
+                  <motion.h1
                     layout
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1438,14 +1488,14 @@ export default function AlphaWaverseEngine() {
                     {T.title}
                   </motion.h1>
                 )}
-                
+
                 <div className="relative w-full max-w-sm group px-4">
                   <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity" />
                   <div className="relative premium-glass rounded-2xl border border-white/10 flex items-center px-4 py-3 gap-3 shadow-2xl">
                     <Search size={18} className="text-white/20 group-focus-within:text-primary transition-colors" />
-                    <input 
-                      type="text" 
-                      placeholder={T.placeholder} 
+                    <input
+                      type="text"
+                      placeholder={T.placeholder}
                       className="bg-transparent flex-1 outline-none text-sm font-bold tracking-tight text-white placeholder:text-white/10"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
@@ -1462,7 +1512,7 @@ export default function AlphaWaverseEngine() {
                 {search && (
                   <div className="flex gap-2 overflow-x-auto no-scrollbar w-full max-w-sm justify-center py-1">
                     {['ALL', 'SONGS', 'ARTISTS', 'ALBUMS'].map((tab) => (
-                      <button 
+                      <button
                         key={tab}
                         className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${tab === 'ALL' ? 'bg-white text-black shadow-lg scale-105' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
                       >
@@ -1475,7 +1525,7 @@ export default function AlphaWaverseEngine() {
 
               <AnimatePresence>
                 {!search ? (
-                  <motion.div 
+                  <motion.div
                     key="recommendations"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1490,8 +1540,8 @@ export default function AlphaWaverseEngine() {
                       <span className="text-[8px] font-black uppercase text-primary animate-pulse">Personalized Live</span>
                     </div>
                     <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar scroll-smooth">
-                      {WAVE_QUERY_DATA.slice(0, 5).map((item) => (
-                        <div 
+                      {[...WAVE_QUERY_DATA, ...ownedDisplayList].map((item) => (
+                        <div
                           key={`rec-${item.id}`}
                           className="min-w-[200px] md:min-w-[280px] premium-glass p-5 rounded-3xl border border-white/5 hover:border-primary/30 transition-all group relative overflow-hidden"
                         >
@@ -1503,8 +1553,8 @@ export default function AlphaWaverseEngine() {
                               </div>
                             )}
                           </div>
-                          <div 
-                            onClick={() => { setActiveTrack(item); setPlaylist(WAVE_QUERY_DATA.slice(0, 5)); setIsPlaying(true); setIsPlayerExpanded(true); }}
+                          <div
+                            onClick={() => { setActiveTrack(item); setPlaylist([...WAVE_QUERY_DATA, ...ownedDisplayList]); setIsPlaying(true); setIsPlayerExpanded(true); }}
                             className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 mb-4 group-hover:scale-110 group-hover:bg-primary group-hover:text-black transition-all cursor-pointer"
                           >
                             <MusicIcon size={20} />
@@ -1520,7 +1570,7 @@ export default function AlphaWaverseEngine() {
                     </div>
                   </motion.div>
                 ) : (
-                  <motion.div 
+                  <motion.div
                     key="results"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1534,12 +1584,12 @@ export default function AlphaWaverseEngine() {
                     <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 pb-48">
                       {filteredResults.length > 0 ? (
                         filteredResults.map((result) => (
-                          <div 
+                          <div
                             key={result.id}
                             className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between group transition-all ${activeTrack?.id === result.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5'}`}
                           >
                             <div className="flex items-center gap-4 flex-1 min-w-0">
-                              <div 
+                              <div
                                 onClick={() => { setActiveTrack(result); setPlaylist(filteredResults); setIsPlaying(true); setIsPlayerExpanded(true); }}
                                 className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
                               >
@@ -1582,7 +1632,7 @@ export default function AlphaWaverseEngine() {
           )}
 
           {view === 'LIKES' && (
-            <motion.div 
+            <motion.div
               key="likes"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1601,7 +1651,7 @@ export default function AlphaWaverseEngine() {
               <div className="px-2 mb-6 space-y-4">
                 <div className="relative group">
                   <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-red-500 transition-colors" />
-                  <input 
+                  <input
                     type="text"
                     placeholder={lang === 'KR' ? "보관함 내 검색..." : "Search in Vault..."}
                     value={vaultSearch}
@@ -1620,22 +1670,22 @@ export default function AlphaWaverseEngine() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 pb-48">
                 {filteredVaultList.map(item => (
-                  <div 
-                    key={item.id} 
+                  <div
+                    key={item.id}
                     className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between transition-all ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-white/5 group'}`}
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div 
+                      <div
                         onClick={(e) => toggleSelection(item.id, e)}
                         className={`cursor-pointer w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${selectedTrackIds.includes(item.id) ? 'bg-red-500 border-red-500' : 'border-white/10 hover:border-red-500'}`}
                       >
                         {selectedTrackIds.includes(item.id) && <Check size={12} className="text-white" />}
                       </div>
-                      <div 
-                        onClick={() => { setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); }} 
+                      <div
+                        onClick={() => { setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); }}
                         className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
                       >
                         {activeTrack?.id === item.id && isPlaying ? (
@@ -1659,8 +1709,8 @@ export default function AlphaWaverseEngine() {
                       <button onClick={(e) => removeFromVault(item.id, e)} className="p-2 text-white/20 hover:text-red-500 transition-colors">
                         <Trash2 size={16} />
                       </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === item.id ? null : item.id); }} 
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === item.id ? null : item.id); }}
                         className="p-2 text-white/40 hover:text-white"
                       >
                         <MoreVertical size={16} />
@@ -1668,22 +1718,22 @@ export default function AlphaWaverseEngine() {
 
                       {activeDropdownId === item.id && (
                         <div className="absolute right-0 top-10 w-36 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 z-[150] shadow-2xl">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('SCORE', item); }} 
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('SCORE', item); }}
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <FileText size={12} className="text-primary" />
                             {lang === 'KR' ? '악보 추출' : 'Extract Score'}
                           </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('MR', item); }} 
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('MR', item); }}
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <Mic2 size={12} className="text-secondary" />
                             {lang === 'KR' ? 'MR 추출' : 'Extract MR'}
                           </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('LYRICS', item); }} 
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('LYRICS', item); }}
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <MusicIcon size={12} className="text-red-500" />
@@ -1705,7 +1755,7 @@ export default function AlphaWaverseEngine() {
               {/* VAULT SELECTION BAR */}
               <AnimatePresence>
                 {selectedTrackIds.length > 0 && view === 'LIKES' && (
-                  <motion.div 
+                  <motion.div
                     initial={{ y: 50, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 50, opacity: 0 }}
@@ -1723,7 +1773,7 @@ export default function AlphaWaverseEngine() {
 
                 {/* SHUFFLE ALL FAB (YTM Style) */}
                 {selectedTrackIds.length === 0 && view === 'NODE' && (
-                  <motion.button 
+                  <motion.button
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0, opacity: 0 }}
@@ -1739,7 +1789,7 @@ export default function AlphaWaverseEngine() {
           )}
 
           {view === 'NODE' && (
-            <motion.div 
+            <motion.div
               key="node"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1758,23 +1808,23 @@ export default function AlphaWaverseEngine() {
 
               {/* ACTION REGISTRATION BUTTONS (Directly below Title) */}
               <div className="flex flex-col items-center gap-3 w-full mt-2">
-                <input 
-                  type="file" 
-                  ref={singleInputRef} 
-                  onChange={onFileChange} 
+                <input
+                  type="file"
+                  ref={singleInputRef}
+                  onChange={onFileChange}
                   accept="audio/*,video/*"
-                  className="hidden" 
+                  className="hidden"
                 />
-                <input 
-                  type="file" 
-                  ref={batchInputRef} 
-                  onChange={onFileChange} 
+                <input
+                  type="file"
+                  ref={batchInputRef}
+                  onChange={onFileChange}
                   multiple
-                  className="hidden" 
+                  className="hidden"
                 />
-                
+
                 <div className="grid grid-cols-2 gap-2 w-full max-w-sm px-2">
-                  <button 
+                  <button
                     onClick={() => singleInputRef.current?.click()}
                     disabled={isUploading}
                     className="col-span-1 flex items-center justify-center gap-2 bg-primary text-black px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
@@ -1782,7 +1832,7 @@ export default function AlphaWaverseEngine() {
                     {isUploading ? <Loader2 size={14} className="animate-spin" /> : <PlusCircle size={14} />}
                     {lang === 'KR' ? "자산 등록" : "Add Asset"}
                   </button>
-                  <button 
+                  <button
                     onClick={() => batchInputRef.current?.click()}
                     disabled={isUploading}
                     className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-primary px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
@@ -1790,14 +1840,14 @@ export default function AlphaWaverseEngine() {
                     {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />}
                     {lang === 'KR' ? "자산 대량 등록" : "Asset Bulk"}
                   </button>
-                  <button 
+                  <button
                     onClick={() => setShowImportModal(true)}
                     className="col-span-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/60 px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:text-white transition-all"
                   >
                     <Globe size={12} />
                     {lang === 'KR' ? "레거시 연동" : "Legacy Link"}
                   </button>
-                  <button 
+                  <button
                     onClick={clearStudio}
                     className="col-span-1 flex items-center justify-center gap-2 bg-red-500/5 border border-red-500/10 text-red-500/40 px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 transition-all"
                   >
@@ -1812,7 +1862,7 @@ export default function AlphaWaverseEngine() {
               <div className="px-4 mb-2 mt-1 w-full max-w-sm mx-auto">
                 <div className="relative group">
                   <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors" />
-                  <input 
+                  <input
                     type="text"
                     placeholder={lang === 'KR' ? "스튜디오 내 검색..." : "Search in Studio..."}
                     value={studioSearch}
@@ -1834,7 +1884,7 @@ export default function AlphaWaverseEngine() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4 pb-48">
                 {isUploading && (
                   <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="premium-glass p-6 rounded-3xl border border-primary/30 bg-primary/5 flex items-center justify-between animate-pulse">
@@ -1851,18 +1901,18 @@ export default function AlphaWaverseEngine() {
                 )}
                 {filteredOwnedList.map(item => (
                   <div key={item.id} className="flex flex-col gap-2">
-                    <div 
+                    <div
                       className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between transition-all ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5 group'}`}
                     >
                       <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div 
+                        <div
                           onClick={(e) => toggleSelection(item.id, e)}
                           className={`cursor-pointer w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${selectedTrackIds.includes(item.id) ? 'bg-primary border-primary' : 'border-white/10 hover:border-primary'}`}
                         >
                           {selectedTrackIds.includes(item.id) && <Check size={12} className="text-black" />}
                         </div>
-                        <div 
-                          onClick={() => { setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); }} 
+                        <div
+                          onClick={() => { setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); }}
                           className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
                         >
                           {activeTrack?.id === item.id && isPlaying ? (
@@ -1887,21 +1937,21 @@ export default function AlphaWaverseEngine() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 transition-opacity">
-                        <button 
+                        <button
                           onClick={(e) => { e.stopPropagation(); handleOpenEdit(item as any); }}
                           className="p-2 text-white/40 hover:text-secondary transition-all"
                         >
                           <RefreshCw size={16} />
                         </button>
-                        <button 
+                        <button
                           onClick={(e) => deleteAsset(item.id, e)}
                           className="p-2 text-white/20 hover:text-red-500 transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
                         <div className="relative">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === item.id ? null : item.id); }} 
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === item.id ? null : item.id); }}
                             className="p-2 text-white/40 hover:text-white"
                           >
                             <MoreVertical size={16} />
@@ -1909,22 +1959,22 @@ export default function AlphaWaverseEngine() {
 
                           {activeDropdownId === item.id && (
                             <div className="absolute right-0 top-10 w-36 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 z-[150] shadow-2xl">
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('SCORE', item as any); }} 
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('SCORE', item as any); }}
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <FileText size={12} className="text-primary" />
                                 {lang === 'KR' ? '악보 추출' : 'Extract Score'}
                               </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('MR', item as any); }} 
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('MR', item as any); }}
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <Mic2 size={12} className="text-secondary" />
                                 {lang === 'KR' ? 'MR 추출' : 'Extract MR'}
                               </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('LYRICS', item as any); }} 
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('LYRICS', item as any); }}
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <MusicIcon size={12} className="text-red-500" />
@@ -1940,7 +1990,7 @@ export default function AlphaWaverseEngine() {
                     {generatedAssets[item.id] && (generatedAssets[item.id].scores.length > 0 || generatedAssets[item.id].mrs.length > 0) && (
                       <div className="ml-8 flex flex-col gap-2">
                         {generatedAssets[item.id].scores.map((score, sIdx) => (
-                          <motion.div 
+                          <motion.div
                             key={score}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -1957,7 +2007,7 @@ export default function AlphaWaverseEngine() {
                           </motion.div>
                         ))}
                         {generatedAssets[item.id].mrs.map((mr, mIdx) => (
-                          <motion.div 
+                          <motion.div
                             key={mr}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -1968,7 +2018,7 @@ export default function AlphaWaverseEngine() {
                               <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Vocal-Removed MR v{mIdx + 1}</span>
                             </div>
                             <div className="flex items-center gap-3">
-                              <button 
+                              <button
                                 onClick={() => { setActiveTrack({ ...item, title: `${item.title} (MR)` } as any); setIsPlaying(true); }}
                                 className="text-[8px] font-black uppercase text-secondary hover:underline"
                               >
@@ -1993,7 +2043,7 @@ export default function AlphaWaverseEngine() {
               {/* STUDIO SELECTION BAR */}
               <AnimatePresence>
                 {selectedTrackIds.length > 0 && view === 'NODE' && (
-                  <motion.div 
+                  <motion.div
                     initial={{ y: 50, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 50, opacity: 0 }}
@@ -2002,23 +2052,23 @@ export default function AlphaWaverseEngine() {
                     <div className="flex items-center justify-center w-full px-1 mb-0.5">
                       <span className="text-[11px] font-black uppercase tracking-widest">{selectedTrackIds.length} {lang === 'KR' ? "곡 선택됨" : "Selected"}</span>
                     </div>
-                    
+
                     <div className="grid grid-cols-4 gap-1.5 w-full">
-                      <button 
-                        onClick={() => playSelected(filteredOwnedList)} 
+                      <button
+                        onClick={() => playSelected(filteredOwnedList)}
                         className="col-span-2 py-2.5 bg-black text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-md hover:scale-[1.02] active:scale-95 transition-all"
                       >
                         <Play size={12} fill="currentColor" /> {lang === 'KR' ? "선택 재생" : "Play Selected"}
                       </button>
-                      
-                      <button 
-                        onClick={exportToVault} 
+
+                      <button
+                        onClick={exportToVault}
                         className="col-span-2 py-2.5 bg-black text-primary rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 border border-primary/20 hover:scale-[1.02] active:scale-95 transition-all shadow-md"
                       >
                         <Heart size={12} fill="currentColor" /> {lang === 'KR' ? "보관함 전송" : "Send to Vault"}
                       </button>
-                      
-                      <button 
+
+                      <button
                         onClick={() => {
                           const initialTitles: Record<string, string> = {};
                           selectedTrackIds.forEach(id => {
@@ -2027,14 +2077,14 @@ export default function AlphaWaverseEngine() {
                           });
                           setBatchTitles(initialTitles);
                           setShowBatchEditModal(true);
-                        }} 
+                        }}
                         className="col-span-2 py-2 bg-black/10 text-black/80 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-1 border border-black/10 hover:bg-black/20 transition-all"
                       >
                         <RefreshCw size={10} /> {lang === 'KR' ? "일괄 수정" : "Batch Edit"}
                       </button>
-                      
-                      <button 
-                        onClick={deleteSelected} 
+
+                      <button
+                        onClick={deleteSelected}
                         className="col-span-2 py-2 bg-red-500/10 text-red-600 border border-red-500/20 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-1 hover:bg-red-500/20 transition-all"
                       >
                         <Trash2 size={10} /> {lang === 'KR' ? "삭제" : "Delete"}
@@ -2056,7 +2106,7 @@ export default function AlphaWaverseEngine() {
             { id: 'RADAR', icon: Search, label: T.radar },
             { id: 'NODE', icon: User, label: T.studio }
           ].map((nav) => (
-            <button 
+            <button
               key={nav.id}
               onClick={() => { setView(nav.id as any); setSearch(''); }}
               className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-full transition-all ${view === nav.id ? 'bg-white text-black scale-105 shadow-xl' : 'text-white/40 hover:text-white'}`}
@@ -2073,7 +2123,7 @@ export default function AlphaWaverseEngine() {
       {/* FULL SCREEN PREMIUM PLAYER (v2 - YTM Standard Inspired) */}
       <AnimatePresence>
         {isPlayerExpanded && activeTrack && (
-          <motion.div 
+          <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -2089,7 +2139,7 @@ export default function AlphaWaverseEngine() {
             <div className="relative z-10 flex flex-col h-full w-full max-w-lg mx-auto pt-6 px-8 pb-10">
               {/* MAIN CONTENT - VISUAL FOCUS */}
               <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-                <motion.div 
+                <motion.div
                   layoutId="player-art"
                   className="w-full max-w-[340px] aspect-square premium-glass rounded-[2rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden group flex shrink items-center justify-center"
                 >
@@ -2108,7 +2158,7 @@ export default function AlphaWaverseEngine() {
                         <MusicIcon size={120} strokeWidth={0.5} />
                       </div>
                       {/* Dynamic Glow Overlay */}
-                      <motion.div 
+                      <motion.div
                         animate={{ scale: isPlaying ? [1, 1.1, 1] : 1, opacity: isPlaying ? [0.3, 0.6, 0.3] : 0.3 }}
                         transition={{ repeat: Infinity, duration: 2 }}
                         className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"
@@ -2122,14 +2172,14 @@ export default function AlphaWaverseEngine() {
                 </motion.div>
 
                 <div className="mt-6 text-center w-full shrink-0">
-                  <motion.h2 
+                  <motion.h2
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     className="text-2xl font-black tracking-tight text-white mb-1.5 leading-tight px-4 truncate"
                   >
                     {activeTrack?.title?.includes('/') ? activeTrack.title.split('/')[0].trim() : (activeTrack?.title || "Unknown Track")}
                   </motion.h2>
-                  <motion.p 
+                  <motion.p
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.1 }}
@@ -2137,29 +2187,29 @@ export default function AlphaWaverseEngine() {
                   >
                     {activeTrack?.title?.includes('/') ? activeTrack.title.split('/').slice(1).join(' x ') : (customProducers[activeTrack?.id || ''] || "ALPHA WAVERSE")}
                   </motion.p>
-                  
+
                   {/* AI Extraction Golden Zone Buttons */}
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                     className="mt-4 flex items-center justify-center gap-2 px-2 max-w-sm mx-auto"
                   >
-                    <button 
+                    <button
                       onClick={() => handleAITask('SCORE')}
                       className="flex items-center gap-1 px-3 py-2 rounded-full bg-white/5 border border-white/10 hover:border-primary/50 text-white/80 hover:text-primary transition-all hover:scale-105 active:scale-95 shadow-lg flex-1 justify-center min-w-0"
                     >
                       <FileText size={12} className="flex-shrink-0" />
                       <span className="text-[9px] font-black uppercase tracking-wider truncate">{lang === 'KR' ? '악보 추출' : 'Extract Score'}</span>
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleAITask('MR')}
                       className="flex items-center gap-1 px-3 py-2 rounded-full bg-white/5 border border-white/10 hover:border-secondary/50 text-white/80 hover:text-secondary transition-all hover:scale-105 active:scale-95 shadow-lg flex-1 justify-center min-w-0"
                     >
                       <Mic2 size={12} className="flex-shrink-0" />
                       <span className="text-[9px] font-black uppercase tracking-wider truncate">{lang === 'KR' ? 'MR 추출' : 'Extract MR'}</span>
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleAITask('LYRICS')}
                       className="flex items-center gap-1 px-3 py-2 rounded-full bg-white/5 border border-white/10 hover:border-red-500/50 text-white/80 hover:text-red-500 transition-all hover:scale-105 active:scale-95 shadow-lg flex-1 justify-center min-w-0"
                     >
@@ -2175,9 +2225,9 @@ export default function AlphaWaverseEngine() {
                 {/* Visualizer (CSS Bars) */}
                 <div className="flex items-end justify-center gap-1.5 h-6">
                   {[...Array(12)].map((_, i) => (
-                    <motion.div 
+                    <motion.div
                       key={i}
-                      animate={{ 
+                      animate={{
                         height: isPlaying ? [6, 24, 10, 18, 6][i % 5] : 4,
                         opacity: isPlaying ? [0.4, 1, 0.4] : 0.2
                       }}
@@ -2190,7 +2240,7 @@ export default function AlphaWaverseEngine() {
                 {/* Progress Bar */}
                 <div className="space-y-3">
                   <div className="h-1.5 bg-white/5 rounded-full overflow-hidden relative group cursor-pointer">
-                    <motion.div 
+                    <motion.div
                       className="h-full bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.8)]"
                       style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
                     />
@@ -2206,7 +2256,7 @@ export default function AlphaWaverseEngine() {
                   <button onClick={handlePrevTrack} className="p-3 text-white/40 hover:text-white transition-all active:scale-90">
                     <SkipBack size={24} fill="currentColor" />
                   </button>
-                  <button 
+                  <button
                     onClick={() => setIsPlaying(!isPlaying)}
                     className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow-[0_10px_30px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all"
                   >
@@ -2223,18 +2273,18 @@ export default function AlphaWaverseEngine() {
                     <ShieldCheck size={10} className="text-primary/40" />
                     <span className="text-[8px] font-black uppercase tracking-[0.3em] text-primary/40">Zen Mode</span>
                   </div>
-                  
+
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => { setIsPlayerExpanded(false); }} 
+                    <button
+                      onClick={() => { setIsPlayerExpanded(false); }}
                       className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white/80 rounded-full transition-all active:scale-95 border border-white/5 shadow-lg"
                     >
                       <ArrowLeft size={14} />
                       <span className="text-[10px] font-black uppercase tracking-widest">Back</span>
                     </button>
-                    
-                    <button 
-                      onClick={() => { setIsPlayerExpanded(false); setIsPlaying(false); setActiveTrack(null); }} 
+
+                    <button
+                      onClick={() => { setIsPlayerExpanded(false); setIsPlaying(false); setActiveTrack(null); }}
                       className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-95 border border-white/10 shadow-lg"
                     >
                       <Home size={14} />
@@ -2251,7 +2301,7 @@ export default function AlphaWaverseEngine() {
       {/* TOKENOMICS / FLOW OF MONEY MODAL */}
       <AnimatePresence>
         {showTokenomicsModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2280,8 +2330,8 @@ export default function AlphaWaverseEngine() {
                   <div>
                     <h4 className="text-xs font-black uppercase tracking-widest text-white mb-1">{lang === 'KR' ? "자산 등록 & 권리 보호" : "Asset Minting & Protection"}</h4>
                     <p className="text-[11px] leading-relaxed opacity-60 font-medium">
-                      {lang === 'KR' 
-                        ? "창작자가 음원을 등록하는 즉시 고유한 블록체인 원장에 기재되어 고유 권리를 공식 보호받습니다." 
+                      {lang === 'KR'
+                        ? "창작자가 음원을 등록하는 즉시 고유한 블록체인 원장에 기재되어 고유 권리를 공식 보호받습니다."
                         : "Your tracks are locked on the decentralized ledger, ensuring true asset sovereignty."}
                     </p>
                   </div>
@@ -2293,8 +2343,8 @@ export default function AlphaWaverseEngine() {
                   <div>
                     <h4 className="text-xs font-black uppercase tracking-widest text-white mb-1">{lang === 'KR' ? "분산형 네트워크 전파" : "P2P Node Propagation"}</h4>
                     <p className="text-[11px] leading-relaxed opacity-60 font-medium">
-                      {lang === 'KR' 
-                        ? "중앙 서버 부하를 줄이기 위해 회원들의 기기가 스트리밍 노드가 되어 안전하고 쾌적하게 분배 전송합니다." 
+                      {lang === 'KR'
+                        ? "중앙 서버 부하를 줄이기 위해 회원들의 기기가 스트리밍 노드가 되어 안전하고 쾌적하게 분배 전송합니다."
                         : "Node networks stream content directly, cutting heavy operational overhead."}
                     </p>
                   </div>
@@ -2306,8 +2356,8 @@ export default function AlphaWaverseEngine() {
                   <div>
                     <h4 className="text-xs font-black uppercase tracking-widest text-white mb-1">{lang === 'KR' ? "알파(α) 자산 형성" : "Alpha (α) Token Yield"}</h4>
                     <p className="text-[11px] leading-relaxed opacity-60 font-medium">
-                      {lang === 'KR' 
-                        ? "절감된 유통 마진과 광고 수익이 결합하여 실시간으로 '알파(α)' 디지털 자산으로 전환 및 축적됩니다." 
+                      {lang === 'KR'
+                        ? "절감된 유통 마진과 광고 수익이 결합하여 실시간으로 '알파(α)' 디지털 자산으로 전환 및 축적됩니다."
                         : "Saved operational margins convert directly into real-time platform yield."}
                     </p>
                   </div>
@@ -2322,15 +2372,15 @@ export default function AlphaWaverseEngine() {
                       <span className="bg-black/20 text-black text-[8px] px-1.5 py-0.5 rounded font-black tracking-widest">80%+</span>
                     </h4>
                     <p className="text-[11px] leading-relaxed text-black/80 font-bold">
-                      {lang === 'KR' 
-                        ? "복잡한 중개 수수료 거품 없이, 발생한 총수익의 80% 이상이 투명하게 원천 창작자에게 정산됩니다." 
+                      {lang === 'KR'
+                        ? "복잡한 중개 수수료 거품 없이, 발생한 총수익의 80% 이상이 투명하게 원천 창작자에게 정산됩니다."
                         : "Skip arbitrary middleman fees. Over 80% goes directly to original node owners."}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={() => setShowTokenomicsModal(false)}
                 className="w-full mt-8 bg-white/5 hover:bg-white/10 border border-white/10 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all"
               >
@@ -2344,7 +2394,7 @@ export default function AlphaWaverseEngine() {
       {/* SECURE AUTH MODAL */}
       <AnimatePresence>
         {showAuthModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2375,8 +2425,8 @@ export default function AlphaWaverseEngine() {
                   <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block pl-1">
                     {lang === 'KR' ? "이메일 주소" : "Email Address"}
                   </label>
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     value={authEmail}
                     onChange={(e) => setAuthEmail(e.target.value)}
                     placeholder="e.g. node@waverse.io"
@@ -2384,7 +2434,7 @@ export default function AlphaWaverseEngine() {
                   />
                 </div>
 
-                <button 
+                <button
                   onClick={() => handleAuth('EMAIL')}
                   disabled={isAuthLoading || !authEmail}
                   className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:hover:bg-white/5"
@@ -2404,7 +2454,7 @@ export default function AlphaWaverseEngine() {
                 </div>
 
                 {/* Social Login Button */}
-                <button 
+                <button
                   onClick={() => handleAuth('GOOGLE')}
                   disabled={isAuthLoading}
                   className="w-full bg-primary text-black py-5 rounded-[2rem] font-black uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] flex items-center justify-center gap-3 disabled:opacity-50"
@@ -2426,7 +2476,7 @@ export default function AlphaWaverseEngine() {
       {/* VISION PROCLAMATION MODAL */}
       <AnimatePresence>
         {showVision && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2454,7 +2504,7 @@ export default function AlphaWaverseEngine() {
                   </div>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setShowVision(false)}
                 className="w-full mt-10 bg-white/5 border border-white/10 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
               >
@@ -2465,12 +2515,12 @@ export default function AlphaWaverseEngine() {
         )}
       </AnimatePresence>
 
-      <audio 
-        ref={audioRef} 
+      <audio
+        ref={audioRef}
         onEnded={handleTrackEnd}
         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        className="hidden" 
+        className="hidden"
       />
 
 
@@ -2478,7 +2528,7 @@ export default function AlphaWaverseEngine() {
       {/* AI PROCESSING OVERLAY */}
       <AnimatePresence>
         {isProcessingAI && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2497,7 +2547,7 @@ export default function AlphaWaverseEngine() {
               {lang === 'KR' ? "AI 하이브리드 노드 연산 중..." : "AI HYBRID NODE COMPUTING..."}
             </p>
             <div className="mt-8 w-64 h-1 bg-white/5 rounded-full overflow-hidden">
-              <motion.div 
+              <motion.div
                 initial={{ x: '-100%' }}
                 animate={{ x: '0%' }}
                 transition={{ duration: 3.5, ease: "easeInOut" }}
@@ -2511,7 +2561,7 @@ export default function AlphaWaverseEngine() {
       {/* SCORE VIEWER MODAL */}
       <AnimatePresence>
         {showScoreViewer && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 1.1 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -2527,8 +2577,8 @@ export default function AlphaWaverseEngine() {
                   <p className="text-[10px] font-black uppercase opacity-40 tracking-widest">Digital Sheet Music v1.0</p>
                 </div>
               </div>
-              <button 
-                onClick={() => setShowScoreViewer(null)} 
+              <button
+                onClick={() => setShowScoreViewer(null)}
                 className="p-3 bg-white/5 rounded-full hover:bg-white/10 transition-colors"
               >
                 <Plus className="rotate-45" size={24} />
@@ -2548,7 +2598,7 @@ export default function AlphaWaverseEngine() {
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="space-y-6 relative border-t-2 border-black/10 pt-10">
                     <div className="flex items-center gap-1 absolute -top-3 left-0 bg-white px-3 text-[10px] font-black text-black/40 tracking-[0.2em] uppercase">SECTION 0{i}</div>
-                    
+
                     <div className="space-y-3">
                       <div className="h-[2px] bg-black/80 w-full" />
                       <div className="h-[2px] bg-black/80 w-full" />
@@ -2556,7 +2606,7 @@ export default function AlphaWaverseEngine() {
                       <div className="h-[2px] bg-black/80 w-full" />
                       <div className="h-[2px] bg-black/80 w-full" />
                     </div>
-                    
+
                     <div className="absolute top-12 left-10 flex gap-6">
                       {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
                         <div key={n} className="flex flex-col items-center">
@@ -2582,13 +2632,13 @@ export default function AlphaWaverseEngine() {
             </div>
 
             <div className="flex justify-center gap-4 mt-10">
-              <button 
+              <button
                 onClick={() => alert(lang === 'KR' ? "📥 PDF 악보 다운로드 시작! 브라우저의 '다운로드' 폴더를 확인해 주세요." : "📥 Starting PDF download! Please check your browser's 'Downloads' folder.")}
                 className="bg-primary text-black px-10 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)]"
               >
                 Download PDF
               </button>
-              <button 
+              <button
                 onClick={() => { setShowScoreViewer(null); alert("Saved to your Node Vault!"); }}
                 className="bg-white/5 border border-white/10 text-white px-10 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
               >
@@ -2603,7 +2653,7 @@ export default function AlphaWaverseEngine() {
       {/* PRO BATCH REGISTRATION MODAL */}
       <AnimatePresence>
         {showBatchModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2629,8 +2679,8 @@ export default function AlphaWaverseEngine() {
                 <div className="grid grid-cols-1 gap-6">
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">01. {lang === 'KR' ? "공통 아티스트" : "Common Artist"}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={uploadArtist}
                       onChange={(e) => setUploadArtist(e.target.value)}
                       placeholder="e.g. Haerim (AI)"
@@ -2639,8 +2689,8 @@ export default function AlphaWaverseEngine() {
                   </div>
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">02. {lang === 'KR' ? "공통 프로듀서" : "Common Producer"}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={uploadProducer}
                       onChange={(e) => setUploadProducer(e.target.value)}
                       placeholder="e.g. K.Kim"
@@ -2648,7 +2698,7 @@ export default function AlphaWaverseEngine() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="bg-white/5 rounded-2xl p-4 max-h-40 overflow-y-auto custom-scrollbar border border-white/5">
                   <p className="text-[8px] font-black uppercase opacity-40 mb-2">{lang === 'KR' ? "등록 대기 목록" : "Pending Queue"}</p>
                   <div className="space-y-2">
@@ -2661,7 +2711,7 @@ export default function AlphaWaverseEngine() {
                   </div>
                 </div>
 
-                <button 
+                <button
                   onClick={handleBatchUpload}
                   className="w-full bg-primary text-black py-6 rounded-full text-xs font-black uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-[0_20px_50px_rgba(var(--primary-rgb),0.3)]"
                 >
@@ -2676,7 +2726,7 @@ export default function AlphaWaverseEngine() {
 
       <AnimatePresence>
         {showUploadModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2702,19 +2752,19 @@ export default function AlphaWaverseEngine() {
                 <div className="grid grid-cols-1 gap-6">
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">01. {lang === 'KR' ? "곡 제목" : "Track Title"}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={uploadTitle}
                       onChange={(e) => setUploadTitle(e.target.value)}
                       placeholder="e.g. My Infinite Wave"
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold tracking-tight focus:border-primary outline-none transition-all placeholder:opacity-20"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">02. {lang === 'KR' ? "아티스트 / 사이버가수" : "Artist / Cyber Singer"}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={uploadArtist}
                       onChange={(e) => setUploadArtist(e.target.value)}
                       placeholder="e.g. Haerim (AI)"
@@ -2724,8 +2774,8 @@ export default function AlphaWaverseEngine() {
 
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">03. {lang === 'KR' ? "프로듀서 / 실제 제작자" : "Producer / Creator"}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={uploadProducer}
                       onChange={(e) => setUploadProducer(e.target.value)}
                       placeholder="e.g. K.Kim"
@@ -2735,7 +2785,7 @@ export default function AlphaWaverseEngine() {
                 </div>
 
                 <div className="pt-6">
-                  <button 
+                  <button
                     onClick={handleFinalUpload}
                     className="w-full bg-primary text-black py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] flex items-center justify-center gap-3"
                   >
@@ -2752,7 +2802,7 @@ export default function AlphaWaverseEngine() {
       {/* LEGACY IMPORT MODAL */}
       <AnimatePresence>
         {showImportModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2767,9 +2817,9 @@ export default function AlphaWaverseEngine() {
                   <h3 className="text-xl font-black uppercase tracking-widest mb-2">{lang === 'KR' ? "레거시 IP 연동" : "Legacy IP Link"}</h3>
                   <p className="text-[10px] opacity-40 uppercase tracking-widest leading-relaxed">Enter ISRC to link your global assets to Alpha Waverse</p>
                 </div>
-                
-                <input 
-                  type="text" 
+
+                <input
+                  type="text"
                   value={importIsrc}
                   onChange={(e) => setImportIsrc(e.target.value.toUpperCase())}
                   placeholder="e.g. KR-107-24-00001"
@@ -2781,13 +2831,13 @@ export default function AlphaWaverseEngine() {
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 w-full mt-4">
-                  <button 
+                  <button
                     onClick={() => setShowImportModal(false)}
                     className="bg-white/5 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     onClick={handleImportLegacy}
                     disabled={isSyncing || !importIsrc}
                     className="bg-primary text-black py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_10px_30px_rgba(var(--primary-rgb),0.3)] disabled:opacity-30"
@@ -2806,7 +2856,7 @@ export default function AlphaWaverseEngine() {
       {/* SOVEREIGN AUTH MODAL */}
       <AnimatePresence>
         {showAuthModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2816,19 +2866,19 @@ export default function AlphaWaverseEngine() {
               {/* Animated Background Decor */}
               <div className="absolute -top-24 -left-24 w-48 h-48 bg-primary/20 blur-[100px] rounded-full" />
               <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-secondary/20 blur-[100px] rounded-full" />
-              
+
               <div className="relative z-10 flex flex-col items-center gap-8">
                 <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center text-primary">
                   <ShieldCheck size={40} className={isAuthLoading ? "animate-pulse" : ""} />
                 </div>
-                
+
                 <div className="text-center">
                   <h3 className="text-2xl font-black uppercase tracking-[0.2em] mb-2">{lang === 'KR' ? "주권적 입장" : "Sovereign Entry"}</h3>
                   <p className="text-[10px] opacity-40 uppercase tracking-widest leading-relaxed">Connect to the Global Waverse Node</p>
                 </div>
 
                 <div className="w-full space-y-3">
-                  <button 
+                  <button
                     onClick={() => handleAuth('GOOGLE')}
                     disabled={isAuthLoading}
                     className="w-full bg-white text-black py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:scale-[1.02] transition-all disabled:opacity-50"
@@ -2841,21 +2891,21 @@ export default function AlphaWaverseEngine() {
                     </svg>
                     Continue with Google
                   </button>
-                  
+
                   <div className="relative py-4">
                     <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5" /></div>
                     <div className="relative flex justify-center text-[8px] font-black uppercase text-white/20"><span className="bg-black/50 backdrop-blur-xl px-2">or Email Access</span></div>
                   </div>
 
                   <div className="space-y-4">
-                    <input 
+                    <input
                       type="email"
                       value={authEmail}
                       onChange={(e) => setAuthEmail(e.target.value)}
                       placeholder="node-owner@domain.com"
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold tracking-widest focus:border-primary outline-none transition-all placeholder:opacity-20"
                     />
-                    <button 
+                    <button
                       onClick={() => handleAuth('EMAIL')}
                       disabled={isAuthLoading || !authEmail}
                       className="w-full bg-primary/10 border border-primary/20 text-primary py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-primary hover:text-black transition-all disabled:opacity-30"
@@ -2865,7 +2915,7 @@ export default function AlphaWaverseEngine() {
                   </div>
                 </div>
 
-                <button 
+                <button
                   onClick={() => setShowAuthModal(false)}
                   className="text-[9px] font-black uppercase opacity-30 hover:opacity-100 transition-opacity tracking-widest"
                 >
@@ -2880,7 +2930,7 @@ export default function AlphaWaverseEngine() {
       {/* BATCH EDIT MODAL */}
       <AnimatePresence>
         {showBatchEditModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2906,7 +2956,7 @@ export default function AlphaWaverseEngine() {
                       return (
                         <div key={id} className="flex flex-col gap-1.5 p-3 bg-white/5 rounded-2xl border border-white/5">
                           <span className="text-[8px] font-black tracking-widest uppercase opacity-40 truncate px-1">{track?.isrc || id}</span>
-                          <input 
+                          <input
                             type="text"
                             value={batchTitles[id] || ""}
                             onChange={(e) => setBatchTitles(prev => ({ ...prev, [id]: e.target.value }))}
@@ -2917,10 +2967,10 @@ export default function AlphaWaverseEngine() {
                       );
                     })}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "공통 아티스트 / 연주자" : "Common Artist / Performer"}</label>
-                    <input 
+                    <input
                       type="text"
                       value={batchArtist}
                       onChange={(e) => setBatchArtist(e.target.value)}
@@ -2930,7 +2980,7 @@ export default function AlphaWaverseEngine() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "공통 제작자 / 프로듀서" : "Common Creator / Producer"}</label>
-                    <input 
+                    <input
                       type="text"
                       value={batchProducer}
                       onChange={(e) => setBatchProducer(e.target.value)}
@@ -2941,13 +2991,13 @@ export default function AlphaWaverseEngine() {
                 </div>
 
                 <div className="flex gap-3 mt-4">
-                  <button 
+                  <button
                     onClick={() => setShowBatchEditModal(false)}
                     className="flex-1 py-4 rounded-2xl bg-white/5 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
                   >
                     {lang === 'KR' ? "취소" : "Cancel"}
                   </button>
-                  <button 
+                  <button
                     onClick={handleBatchSave}
                     className="flex-1 py-4 rounded-2xl bg-primary text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_10px_40px_rgba(var(--primary-rgb),0.3)]"
                   >
@@ -2963,7 +3013,7 @@ export default function AlphaWaverseEngine() {
       {/* ASSET EDIT MODAL */}
       <AnimatePresence>
         {editingAssetId && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2984,7 +3034,7 @@ export default function AlphaWaverseEngine() {
                 <div className="space-y-5">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "곡 제목" : "Track Title"}</label>
-                    <input 
+                    <input
                       type="text"
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
@@ -2993,7 +3043,7 @@ export default function AlphaWaverseEngine() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "아티스트 / 연주자" : "Artist / Performer"}</label>
-                    <input 
+                    <input
                       type="text"
                       value={editArtist}
                       onChange={(e) => setEditArtist(e.target.value)}
@@ -3003,7 +3053,7 @@ export default function AlphaWaverseEngine() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-1">{lang === 'KR' ? "제작자 / 프로듀서" : "Creator / Producer"}</label>
-                    <input 
+                    <input
                       type="text"
                       value={editProducer}
                       onChange={(e) => setEditProducer(e.target.value)}
@@ -3013,13 +3063,13 @@ export default function AlphaWaverseEngine() {
                 </div>
 
                 <div className="flex gap-3 mt-4">
-                  <button 
+                  <button
                     onClick={() => setEditingAssetId(null)}
                     className="flex-1 py-4 rounded-2xl bg-white/5 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
                   >
                     {lang === 'KR' ? "취소" : "Cancel"}
                   </button>
-                  <button 
+                  <button
                     onClick={handleSaveEdit}
                     className="flex-1 py-4 rounded-2xl bg-secondary text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_rgba(var(--secondary-rgb),0.3)]"
                   >
@@ -3035,7 +3085,7 @@ export default function AlphaWaverseEngine() {
       {/* VIDEO PLAYER MODAL */}
       <AnimatePresence>
         {showVideoPlayer && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -3051,7 +3101,7 @@ export default function AlphaWaverseEngine() {
                   <p className="text-[10px] font-black uppercase opacity-40 tracking-widest">Sovereign 4K Node Streaming</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setShowVideoPlayer(null)}
                 className="p-4 bg-white/5 rounded-full hover:bg-white/10 transition-colors"
               >
@@ -3060,9 +3110,9 @@ export default function AlphaWaverseEngine() {
             </div>
 
             <div className="flex-1 bg-black rounded-[2.5rem] overflow-hidden relative group border border-white/5 shadow-2xl">
-              <video 
-                src={customUrls[showVideoPlayer]} 
-                controls 
+              <video
+                src={customUrls[showVideoPlayer]}
+                controls
                 autoPlay
                 className="w-full h-full object-contain"
               />
@@ -3074,14 +3124,14 @@ export default function AlphaWaverseEngine() {
 
             <div className="mt-8 flex justify-between items-center px-4">
               <div className="flex items-center gap-6 text-white/40">
-                <button 
+                <button
                   onClick={() => alert(lang === 'KR' ? "글로벌 유통 엔진 가동: 전 세계 120개 플랫폼으로 배포를 시작합니다." : "Global Distribution Engine: Starting deployment to 120+ platforms.")}
                   className="flex items-center gap-2 hover:text-primary transition-colors"
                 >
                   <Share2 size={16} />
                   <span className="text-[10px] font-black uppercase">Distribute</span>
                 </button>
-                <button 
+                <button
                   onClick={() => alert(lang === 'KR' ? "실시간 자산 통계: 노드 전파율 및 예상 수익 데이터를 분석 중입니다." : "Real-time Stats: Analyzing node propagation and projected earnings.")}
                   className="flex items-center gap-2 hover:text-primary transition-colors"
                 >
@@ -3089,7 +3139,7 @@ export default function AlphaWaverseEngine() {
                   <span className="text-[10px] font-black uppercase">Stats</span>
                 </button>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   alert(lang === 'KR' ? "🎉 마스터 NFT 민팅 완료! 귀하의 주권적 자산이 블록체인에 공식 등록되었습니다." : "🎉 Master NFT Minted! Your sovereign asset is now officially registered on-chain.");
                   setShowVideoPlayer(null); // Close the player as the final step
