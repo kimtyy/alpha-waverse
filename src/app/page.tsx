@@ -749,9 +749,14 @@ export default function AlphaWaverseEngine() {
 
     const timer = setTimeout(() => {
       if (isPlaying && !isActuallyPlaying && !playbackError) {
-        setPlaybackError("Loading stalled... Try Play again");
+        console.warn("Watchdog: Playback stalled. Attempting engine recovery...");
+        setPlaybackError("Engine retrying... Wait 2s");
+        if (audioRef.current) {
+          audioRef.current.load(); // Force browser to re-fetch/re-buffer
+          audioRef.current.play().catch(() => {}); // Attempt re-play
+        }
       }
-    }, 5000);
+    }, 6000);
 
     playAudio();
     return () => clearTimeout(timer);
