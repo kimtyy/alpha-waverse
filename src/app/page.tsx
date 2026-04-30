@@ -718,6 +718,13 @@ export default function AlphaWaverseEngine() {
           audioRef.current.load();
         }
 
+        // 4. Smart CORS (Critical Fix: Blobs hate crossOrigin)
+        if (currentUrl.startsWith('blob:')) {
+          audioRef.current.removeAttribute('crossOrigin');
+        } else {
+          audioRef.current.setAttribute('crossOrigin', 'anonymous');
+        }
+
         if (isPlaying) {
           setPlaybackError(null);
           const playPromise = audioRef.current.play();
@@ -731,6 +738,14 @@ export default function AlphaWaverseEngine() {
           }
         } else {
           audioRef.current.pause();
+          setAudioStatus('IDLE');
+        }
+      } catch (err: any) {
+        console.error("Playback System Error:", err);
+        setAudioStatus('ERROR');
+        setPlaybackError("Engine Error: Retrying...");
+      }
+    };
 
     const timer = setTimeout(() => {
       if (isPlaying && !isActuallyPlaying && !playbackError) {
