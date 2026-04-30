@@ -723,9 +723,22 @@ export default function AlphaWaverseEngine() {
       if (isPlaying) {
         audioRef.current.muted = false;
         audioRef.current.volume = 1.0;
-        audioRef.current.play().catch(() => {});
-        setIsActuallyPlaying(true);
-        setAudioStatus('PLAYING');
+        
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsActuallyPlaying(true);
+              setAudioStatus('PLAYING');
+              setPlaybackError('');
+            })
+            .catch((err) => {
+              console.error("Playback failed:", err);
+              setAudioStatus('ERROR');
+              setPlaybackError(err.name === 'NotAllowedError' ? 'BROWSER BLOCK' : 'FILE CORRUPTED');
+              setIsActuallyPlaying(false);
+            });
+        }
       } else {
         audioRef.current.pause();
         setIsActuallyPlaying(false);
