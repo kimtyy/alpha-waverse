@@ -123,6 +123,7 @@ export default function AlphaWaverseEngine() {
   // Playback State
   const [activeTrack, setActiveTrack] = useState<SearchResult | null>(null);
   const [playlist, setPlaylist] = useState<SearchResult[]>([]);
+  const [isActuallyPlaying, setIsActuallyPlaying] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1057,11 +1058,12 @@ export default function AlphaWaverseEngine() {
 
       try {
         await saveToIndexedDB(newId, uploadFile);
-        let finalUrl = URL.createObjectURL(uploadFile);
+        const localUrl = URL.createObjectURL(uploadFile);
+        let finalUrl = localUrl;
 
-        // Cloud Upload to Supabase
+        // Cloud Upload to Supabase (Background)
         try {
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from('assets')
             .upload(`${newId}`, uploadFile, { upsert: true });
 
@@ -1070,6 +1072,8 @@ export default function AlphaWaverseEngine() {
               .from('assets')
               .getPublicUrl(`${newId}`);
             if (publicUrlData?.publicUrl) {
+              // We keep finalUrl as localUrl for THIS session for speed, 
+              // but we record the publicUrl for future/remote access.
               finalUrl = publicUrlData.publicUrl;
             }
           }
@@ -1077,7 +1081,8 @@ export default function AlphaWaverseEngine() {
           console.error("Single Cloud upload failed", cloudErr);
         }
 
-        setCustomUrls(prev => ({ ...prev, [newId]: finalUrl }));
+        // IMPORTANT: For current session, ALWAYS use localUrl to guarantee playback
+        setCustomUrls(prev => ({ ...prev, [newId]: localUrl }));
 
         setOwnedAssets(prev => [newId, ...prev]);
         setRegisteredFilenames(prev => new Set(prev).add(`${uploadFile.name}-${uploadFile.size}`));
@@ -1638,7 +1643,7 @@ export default function AlphaWaverseEngine() {
                                 onClick={() => { setActiveTrack(result); setPlaylist(filteredResults); setIsPlaying(true); setIsPlayerExpanded(true); }}
                                 className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
                               >
-                                {activeTrack?.id === result.id && isPlaying ? (
+                                {activeTrack?.id === result.id && isActuallyPlaying ? (
                                   <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
                                     <div className="flex gap-1 items-end h-4">
                                       <motion.div animate={{ height: [4, 12, 4] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-1 bg-primary rounded-full" />
@@ -1647,7 +1652,7 @@ export default function AlphaWaverseEngine() {
                                     </div>
                                   </div>
                                 ) : (
-                                  <MusicIcon size={20} className="group-hover:text-primary transition-colors" />
+                                  <MusicIcon size={20} className={`group-hover:text-primary transition-colors ${activeTrack?.id === result.id && isPlaying ? 'animate-pulse text-primary' : ''}`} />
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -1733,7 +1738,7 @@ export default function AlphaWaverseEngine() {
                         onClick={() => { setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); }}
                         className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
                       >
-                        {activeTrack?.id === item.id && isPlaying ? (
+                        {activeTrack?.id === item.id && isActuallyPlaying ? (
                           <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
                             <div className="flex gap-1 items-end h-4">
                               <motion.div animate={{ height: [4, 12, 4] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-1 bg-red-500 rounded-full" />
@@ -1742,7 +1747,7 @@ export default function AlphaWaverseEngine() {
                             </div>
                           </div>
                         ) : (
-                          <MusicIcon size={20} />
+                          <MusicIcon size={20} className={activeTrack?.id === item.id && isPlaying ? 'animate-pulse text-red-500' : ''} />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1960,7 +1965,7 @@ export default function AlphaWaverseEngine() {
                           onClick={() => { setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); }}
                           className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
                         >
-                          {activeTrack?.id === item.id && isPlaying ? (
+                          {activeTrack?.id === item.id && isActuallyPlaying ? (
                             <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
                               <div className="flex gap-1 items-end h-4">
                                 <motion.div animate={{ height: [4, 12, 4] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-1 bg-primary rounded-full" />
@@ -1969,7 +1974,7 @@ export default function AlphaWaverseEngine() {
                               </div>
                             </div>
                           ) : (
-                            <MusicIcon size={20} />
+                            <MusicIcon size={20} className={activeTrack?.id === item.id && isPlaying ? 'animate-pulse text-primary' : ''} />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -2204,7 +2209,7 @@ export default function AlphaWaverseEngine() {
                       </div>
                       {/* Dynamic Glow Overlay */}
                       <motion.div
-                        animate={{ scale: isPlaying ? [1, 1.1, 1] : 1, opacity: isPlaying ? [0.3, 0.6, 0.3] : 0.3 }}
+                        animate={{ scale: isActuallyPlaying ? [1, 1.1, 1] : 1, opacity: isActuallyPlaying ? [0.3, 0.6, 0.3] : 0.3 }}
                         transition={{ repeat: Infinity, duration: 2 }}
                         className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"
                       />
@@ -2273,8 +2278,8 @@ export default function AlphaWaverseEngine() {
                     <motion.div
                       key={i}
                       animate={{
-                        height: isPlaying ? [6, 24, 10, 18, 6][i % 5] : 4,
-                        opacity: isPlaying ? [0.4, 1, 0.4] : 0.2
+                        height: isActuallyPlaying ? [6, 24, 10, 18, 6][i % 5] : 4,
+                        opacity: isActuallyPlaying ? [0.4, 1, 0.4] : 0.2
                       }}
                       transition={{ repeat: Infinity, duration: 0.5 + (i * 0.1), ease: "easeInOut" }}
                       className="w-1.5 bg-primary rounded-full"
@@ -2436,86 +2441,7 @@ export default function AlphaWaverseEngine() {
         )}
       </AnimatePresence>
 
-      {/* SECURE AUTH MODAL */}
-      <AnimatePresence>
-        {showAuthModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[650] bg-black/90 backdrop-blur-3xl flex items-center justify-center p-6"
-          >
-            <div className="w-full max-w-md premium-glass p-8 md:p-12 rounded-[3rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative overflow-hidden">
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/20 blur-[80px] rounded-full pointer-events-none" />
-              <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-secondary/20 blur-[80px] rounded-full pointer-events-none" />
-
-              <div className="flex justify-between items-center mb-10 relative z-10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
-                    <ShieldCheck size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-black uppercase tracking-widest">{lang === 'KR' ? "보안 로그인" : "Secure Login"}</h3>
-                    <p className="text-[10px] font-medium opacity-40 uppercase tracking-[0.2em]">Alpha Waverse Node Gateway</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowAuthModal(false)} className="p-2 hover:bg-white/5 rounded-full transition-colors">
-                  <Plus className="rotate-45 opacity-40 hover:opacity-100" size={32} />
-                </button>
-              </div>
-
-              <div className="space-y-6 relative z-10">
-                {/* Email Login Section */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block pl-1">
-                    {lang === 'KR' ? "이메일 주소" : "Email Address"}
-                  </label>
-                  <input
-                    type="email"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="e.g. node@waverse.io"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-sm focus:border-primary outline-none transition-all placeholder:opacity-20 font-bold"
-                  />
-                </div>
-
-                <button
-                  onClick={() => handleAuth('EMAIL')}
-                  disabled={isAuthLoading || !authEmail}
-                  className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:hover:bg-white/5"
-                >
-                  {isAuthLoading ? (
-                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Mail size={16} />
-                  )}
-                  {lang === 'KR' ? "이메일로 계속하기" : "Continue with Email"}
-                </button>
-
-                <div className="flex items-center gap-4 my-6">
-                  <div className="h-[1px] bg-white/10 flex-1" />
-                  <span className="text-[9px] font-black opacity-30 tracking-widest uppercase">OR</span>
-                  <div className="h-[1px] bg-white/10 flex-1" />
-                </div>
-
-                {/* Social Login Button */}
-                <button
-                  onClick={() => handleAuth('GOOGLE')}
-                  disabled={isAuthLoading}
-                  className="w-full bg-primary text-black py-5 rounded-[2rem] font-black uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] flex items-center justify-center gap-3 disabled:opacity-50"
-                >
-                  <Globe size={18} />
-                  {lang === 'KR' ? "구글 계정으로 로그인" : "Login with Google"}
-                </button>
-
-                <p className="text-[8px] font-medium opacity-30 text-center leading-relaxed italic mt-4 px-4">
-                  * By connecting, you certify ownership authorization over deployed decentralized micro-assets.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Modals moved to end for cleaner structure */}
 
 
       {/* VISION PROCLAMATION MODAL */}
@@ -2562,7 +2488,12 @@ export default function AlphaWaverseEngine() {
 
       <audio
         ref={audioRef}
-        onEnded={handleTrackEnd}
+        onPlay={() => setIsActuallyPlaying(true)}
+        onPause={() => setIsActuallyPlaying(false)}
+        onWaiting={() => setIsActuallyPlaying(false)}
+        onPlaying={() => setIsActuallyPlaying(true)}
+        onEnded={() => { setIsActuallyPlaying(false); handleTrackEnd(); }}
+        onError={() => setIsActuallyPlaying(false)}
         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
         className="hidden"
