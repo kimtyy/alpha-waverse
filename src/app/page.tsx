@@ -647,16 +647,19 @@ export default function AlphaWaverseEngine() {
           const ids: string[] = [];
           const titlesMap: Record<string, string> = {};
           const producersMap: Record<string, string> = {};
+          const urlMap: Record<string, string> = {};
 
           for (const asset of cloudAssets) {
             ids.push(asset.asset_id);
-            titlesMap[asset.asset_id] = `${asset.title} / ${asset.artist || 'Unknown'} / ${asset.producer || 'Unknown'}`;
-            producersMap[asset.asset_id] = asset.producer || 'Unknown';
+            titlesMap[asset.asset_id] = `${asset.title} / ${asset.artist || 'Alpha Node'} / ${asset.producer || 'Alpha Node'}`;
+            producersMap[asset.asset_id] = asset.producer || 'Alpha Node';
+            if (asset.url) urlMap[asset.asset_id] = asset.url;
           }
 
           setOwnedAssets(prev => Array.from(new Set([...ids, ...prev])));
           setCustomTitles(prev => ({ ...titlesMap, ...prev }));
           setCustomProducers(prev => ({ ...producersMap, ...prev }));
+          setCustomUrls(prev => ({ ...urlMap, ...prev }));
         }
       } catch (err) {
         console.error("Failed to load global P2P assets", err);
