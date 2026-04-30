@@ -126,6 +126,7 @@ export default function AlphaWaverseEngine() {
   const [isActuallyPlaying, setIsActuallyPlaying] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const [audioStatus, setAudioStatus] = useState<'IDLE' | 'LOADING' | 'PLAYING' | 'STALLED' | 'ERROR'>('IDLE');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -699,62 +700,26 @@ export default function AlphaWaverseEngine() {
         let currentUrl = customUrls[activeTrack.id] || activeTrack.url;
         if (!currentUrl) return;
 
-        // Add cache buster for remote URLs to bypass browser caching issues
-        if (currentUrl.startsWith('http')) {
-          currentUrl = `${currentUrl}${currentUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`;
-        }
-
-        // 2. Local assets skip P2P requests to avoid latency/blocks
-        const isLocalAsset = activeTrack.id.startsWith('user-asset-');
-        if (!isLocalAsset && !isP2PHost && isP2PConnected && dataChannelRef.current?.readyState === 'open') {
-          dataChannelRef.current.send(JSON.stringify({ type: 'REQUEST_ASSET', assetId: activeTrack.id }));
-        }
-
-        // 3. Audio Element Optimization
-        audioRef.current.volume = 1.0;
-        audioRef.current.muted = false;
-
-        // Always reload if src changes OR if it was in an error/ended state
-        if (audioRef.current.src !== currentUrl || audioRef.current.ended || audioRef.current.error) {
+        setAudioStatus('LOADING');
+        // Always reload if src changes
+        if (audioRef.current.src !== currentUrl) {
           audioRef.current.src = currentUrl;
           audioRef.current.load();
-        // 4. Smart CORS (Critical Fix: Blobs hate crossOrigin)
-        if (currentUrl.startsWith('blob:')) {
-          audioRef.current.removeAttribute('crossOrigin');
-        } else {
-          audioRef.current.setAttribute('crossOrigin', 'anonymous');
         }
 
         if (isPlaying) {
           setPlaybackError(null);
           const playPromise = audioRef.current.play();
           if (playPromise !== undefined) {
-            await playPromise.catch(e => {
-              console.error("Play Failed:", e);
-              if (e.name === 'NotAllowedError') {
-                setPlaybackError("Tap anywhere to enable sound");
-              } else {
-                setPlaybackError("Sound system blocked");
-              }
+            await playPromise.then(() => {
+              setAudioStatus('PLAYING');
+            }).catch(e => {
+              setAudioStatus('ERROR');
+              if (e.name === 'NotAllowedError') setPlaybackError("Tap to enable sound");
             });
           }
         } else {
           audioRef.current.pause();
-        }
-      } catch (err: any) {
-        console.error("Playback System Error:", err);
-        // Special recovery for user assets (Reload from IndexedDB)
-        if (activeTrack.id.startsWith('user-asset-')) {
-          const restoredUrl = await loadFromIndexedDB(activeTrack.id);
-          if (restoredUrl && audioRef.current) {
-            setCustomUrls(prev => ({ ...prev, [activeTrack.id]: restoredUrl }));
-            audioRef.current.src = restoredUrl;
-            audioRef.current.load(); // Ensure load is called here too
-            if (isPlaying) await audioRef.current.play().catch(e => console.warn("Recovery play failed", e));
-          }
-        }
-      }
-    };
 
     const timer = setTimeout(() => {
       if (isPlaying && !isActuallyPlaying && !playbackError) {
@@ -2299,18 +2264,25 @@ export default function AlphaWaverseEngine() {
               {/* SIMPLIFIED CONTROLS - ZEN FOCUS */}
               <div className="pb-4 pt-4 space-y-4 shrink-0">
                 {/* Visualizer (CSS Bars) */}
-                <div className="flex items-end justify-center gap-1.5 h-6">
-                  {[...Array(12)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{
-                        height: isActuallyPlaying ? [6, 24, 10, 18, 6][i % 5] : 4,
-                        opacity: isActuallyPlaying ? [0.4, 1, 0.4] : 0.2
-                      }}
-                      transition={{ repeat: Infinity, duration: 0.5 + (i * 0.1), ease: "easeInOut" }}
-                      className="w-1.5 bg-primary rounded-full"
-                    />
-                  ))}
+                <div className="flex flex-col items-center justify-center gap-2 h-10">
+                  <div className="flex items-end justify-center gap-1.5 h-6">
+                    {[...Array(12)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        animate={{
+                          height: isActuallyPlaying ? [6, 24, 10, 18, 6][i % 5] : 4,
+                          opacity: isActuallyPlaying ? [0.4, 1, 0.4] : 0.2
+                        }}
+                        transition={{ repeat: Infinity, duration: 0.5 + (i * 0.1), ease: "easeInOut" }}
+                        className="w-1.5 bg-primary rounded-full"
+                      />
+                    ))}
+                  </div>
+                  {/* SYSTEM STATUS BADGE */}
+                  <div className="flex items-center gap-2">
+                    <div className={`w-1.5 h-1.5 rounded-full ${audioStatus === 'PLAYING' ? 'bg-green-500 animate-pulse' : audioStatus === 'LOADING' ? 'bg-yellow-500 animate-spin' : 'bg-red-500'}`} />
+                    <span className="text-[7px] font-black tracking-[0.2em] text-white/40 uppercase">System: {audioStatus}</span>
+                  </div>
                 </div>
 
                 {/* Progress Bar */}
@@ -2514,15 +2486,15 @@ export default function AlphaWaverseEngine() {
 
       <audio
         ref={audioRef}
-        onPlay={() => { setIsActuallyPlaying(true); setPlaybackError(null); }}
-        onPause={() => setIsActuallyPlaying(false)}
-        onWaiting={() => { console.log("Buffering..."); }}
-        onPlaying={() => { setIsActuallyPlaying(true); setPlaybackError(null); }}
-        onEnded={() => { setIsActuallyPlaying(false); handleTrackEnd(); }}
+        onPlay={() => { setIsActuallyPlaying(true); setAudioStatus('PLAYING'); }}
+        onPause={() => { setIsActuallyPlaying(false); setAudioStatus('IDLE'); }}
+        onWaiting={() => setAudioStatus('LOADING')}
+        onStalled={() => setAudioStatus('STALLED')}
+        onPlaying={() => { setIsActuallyPlaying(true); setAudioStatus('PLAYING'); }}
+        onEnded={() => { setIsActuallyPlaying(false); setAudioStatus('IDLE'); handleTrackEnd(); }}
         onError={(e) => { 
-          console.error("Audio Error:", e);
-          setPlaybackError("Sound blocked or missing");
-          setIsActuallyPlaying(false);
+          setAudioStatus('ERROR');
+          setPlaybackError("Format not supported or file missing");
         }}
         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
