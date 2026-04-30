@@ -474,7 +474,7 @@ export default function AlphaWaverseEngine() {
     if (dbPromiseRef.current) return dbPromiseRef.current;
 
     dbPromiseRef.current = new Promise((resolve, reject) => {
-      const request = indexedDB.open('AlphaWaverseDB', 1);
+      const request = indexedDB.open('AlphaWaverseDB', 2); // Upgrade to version 2
       request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains('assets')) {
