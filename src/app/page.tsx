@@ -90,7 +90,7 @@ export default function AlphaWaverseEngine() {
       if (session?.user) {
         setUser({
           email: session.user.email || 'user@waverse.io',
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Node Owner',
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Alpha Node #1',
           avatar: session.user.user_metadata?.avatar_url
         });
         setIsCloudSynced(true);
@@ -156,7 +156,7 @@ export default function AlphaWaverseEngine() {
   const [duration, setDuration] = useState(0);
 
   // Default Settings for Fast Registration
-  const [defaultProducer, setDefaultProducer] = useState('Alpha Owner');
+  const [defaultProducer, setDefaultProducer] = useState('Alpha Node');
 
   // Batch Editing State
   const [showBatchEditModal, setShowBatchEditModal] = useState(false);
@@ -692,47 +692,34 @@ export default function AlphaWaverseEngine() {
       return;
     }
 
-    const playAudio = async () => {
+    const playAudio = () => {
       if (!audioRef.current || !activeTrack) return;
+      const currentUrl = customUrls[activeTrack.id] || activeTrack.url;
       
-      let currentUrl = customUrls[activeTrack.id] || activeTrack.url;
-      
-      // 1. If URL is missing, try recovering from local database
-      if (!currentUrl) {
-        console.log("URL missing for track, attempting recovery...");
-        const restored = await loadFromIndexedDB(activeTrack.id);
-        if (restored) {
-          currentUrl = restored;
-          setCustomUrls(prev => ({ ...prev, [activeTrack.id]: restored }));
-        }
-      }
-
       if (!currentUrl) {
         setAudioStatus('ERROR');
-        setPlaybackError("File address missing");
+        setPlaybackError('FILE ADDRESS MISSING');
         return;
       }
 
-      try {
-        if (audioRef.current.src !== currentUrl) {
-          audioRef.current.src = currentUrl;
-        }
+      setPlaybackError(''); // Clear error if URL found
 
-        if (isPlaying) {
-          setAudioStatus('LOADING');
-          setPlaybackError(null);
-          await audioRef.current.play();
-        } else {
-          audioRef.current.pause();
-          setAudioStatus('IDLE');
-        }
-      } catch (err: any) {
-        if (err.name === 'NotAllowedError') {
-          setPlaybackError("Tap to enable sound");
-        } else {
-          console.error("Playback Error:", err);
-          setAudioStatus('ERROR');
-        }
+      if (audioRef.current.src !== currentUrl) {
+        audioRef.current.src = currentUrl;
+        setAudioStatus('LOADING');
+        audioRef.current.load();
+      }
+
+      if (isPlaying) {
+        audioRef.current.muted = false;
+        audioRef.current.volume = 1.0;
+        audioRef.current.play().catch(() => {});
+        setIsActuallyPlaying(true);
+        setAudioStatus('PLAYING');
+      } else {
+        audioRef.current.pause();
+        setIsActuallyPlaying(false);
+        setAudioStatus('IDLE');
       }
     };
 
@@ -1011,7 +998,7 @@ export default function AlphaWaverseEngine() {
         const newId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         // Format: Title / Artist / Producer
         const baseTitle = file.name.split('.')[0];
-        const fullTitle = `${baseTitle} / ${uploadArtist || "Unknown"} / ${uploadProducer || "Unknown"}`;
+        const fullTitle = `${baseTitle} / ${uploadArtist || "Alpha Node"} / ${uploadProducer || "Alpha Node"}`;
 
         try {
           await saveToIndexedDB(newId, file);
@@ -1053,7 +1040,7 @@ export default function AlphaWaverseEngine() {
     setTimeout(async () => {
       const newId = `user-asset-${Date.now()}`;
       const isVideo = uploadFile.type.startsWith('video/');
-      const fullTitle = `${uploadTitle} / ${uploadArtist || 'Unknown'} / ${uploadProducer || 'Unknown'}`;
+      const fullTitle = `${uploadTitle} / ${uploadArtist || 'Alpha Node'} / ${uploadProducer || 'Alpha Node'}`;
 
       try {
         await saveToIndexedDB(newId, uploadFile);
@@ -1101,8 +1088,8 @@ export default function AlphaWaverseEngine() {
             asset_id: newId,
             node_owner: user.email,
             title: uploadTitle,
-            artist: uploadArtist || 'Unknown',
-            producer: uploadProducer || 'Unknown',
+            artist: uploadArtist || 'Alpha Node',
+            producer: uploadProducer || 'Alpha Node',
             file_type: uploadFile.type,
             node_ip: 'p2p-node-gateway'
           });
@@ -1357,7 +1344,7 @@ export default function AlphaWaverseEngine() {
               ? (lang === 'KR' ? '레거시 IP 통합 자산' : 'Legacy IP Integrated Asset')
               : customProducers[id]
                 ? (lang === 'KR' ? `${customProducers[id]}의 자산` : `Asset of ${customProducers[id]}`)
-                : (lang === 'KR' ? '등록자의 자산' : "Registrant's Asset"),
+                : (lang === 'KR' ? '알파 노드의 자산' : "Alpha Node's Asset"),
         isrc: id.startsWith('legacy-asset-') ? id.split('-')[2] : `KR-AWV-26-${id.slice(-5).toUpperCase()}`,
         status: 'Certified',
         url: customUrls[id] || ''
@@ -1655,8 +1642,8 @@ export default function AlphaWaverseEngine() {
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-sm truncate tracking-tight group-hover:text-primary transition-colors">{result.title}</h3>
-                                <p className="text-[10px] font-medium text-white/40 truncate uppercase tracking-wider">{result.category} • {result.isrc}</p>
+                                <h3 className="font-bold text-sm truncate tracking-tight group-hover:text-primary transition-colors">{result.title.replace(/OWNER/gi, 'NODE')}</h3>
+                                <p className="text-[10px] font-medium text-white/40 truncate uppercase tracking-wider">{result.category} • {result.isrc.replace(/OWNER/gi, 'NODE')}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1 transition-opacity">
@@ -2226,7 +2213,7 @@ export default function AlphaWaverseEngine() {
                     animate={{ y: 0, opacity: 1 }}
                     className="text-2xl font-black tracking-tight text-white mb-1.5 leading-tight px-4 truncate"
                   >
-                    {activeTrack?.title?.includes('/') ? activeTrack.title.split('/')[0].trim() : (activeTrack?.title || "Unknown Track")}
+                    {activeTrack?.title?.includes('/') ? activeTrack.title.split('/')[0].trim().replace(/OWNER/gi, 'NODE') : (activeTrack?.title || "Unknown Track").replace(/OWNER/gi, 'NODE')}
                   </motion.h2>
                   <motion.p
                     initial={{ y: 20, opacity: 0 }}
@@ -2234,7 +2221,9 @@ export default function AlphaWaverseEngine() {
                     transition={{ delay: 0.1 }}
                     className="text-[12px] font-bold text-primary uppercase tracking-[0.3em] opacity-60"
                   >
-                    {activeTrack?.title?.includes('/') ? activeTrack.title.split('/').slice(1).join(' x ') : (customProducers[activeTrack?.id || ''] || "ALPHA WAVERSE")}
+                    {activeTrack?.title?.includes('/') 
+                      ? activeTrack.title.split('/').slice(1).join(' x ').replace(/OWNER/gi, 'NODE') 
+                      : (customProducers[activeTrack?.id || ''] || "ALPHA WAVERSE").replace(/OWNER/gi, 'NODE')}
                   </motion.p>
 
                   {/* AI Extraction Golden Zone Buttons */}
@@ -2495,16 +2484,7 @@ export default function AlphaWaverseEngine() {
 
       <audio
         ref={audioRef}
-        onPlay={() => { setIsActuallyPlaying(true); setAudioStatus('PLAYING'); }}
-        onPause={() => { setIsActuallyPlaying(false); setAudioStatus('IDLE'); }}
-        onWaiting={() => setAudioStatus('LOADING')}
-        onStalled={() => setAudioStatus('STALLED')}
-        onPlaying={() => { setIsActuallyPlaying(true); setAudioStatus('PLAYING'); }}
-        onEnded={() => { setIsActuallyPlaying(false); setAudioStatus('IDLE'); handleTrackEnd(); }}
-        onError={(e) => { 
-          setAudioStatus('ERROR');
-          setPlaybackError("Format not supported or file missing");
-        }}
+        playsInline
         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
         className="fixed bottom-0 left-0 w-1 h-1 opacity-[0.01] pointer-events-none"
