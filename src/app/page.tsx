@@ -828,8 +828,12 @@ export default function AlphaWaverseEngine() {
           return { file, newId, title, artist, fullTitle };
         });
 
-        // 1. Parallel IndexedDB Saves
-        await Promise.all(fileData.map(d => saveToIndexedDB(d.newId, d.file)));
+        // 1. Parallel IndexedDB Saves (LOCAL MUST SUCCEED)
+        try {
+          await Promise.all(fileData.map(d => saveToIndexedDB(d.newId, d.file)));
+        } catch (dbErr: any) {
+          throw new Error(`Local DB Error: ${dbErr.message || 'IndexedDB Fail'}`);
+        }
 
         // 2. Map local & cloud data
         for (const d of fileData) {
@@ -853,12 +857,17 @@ export default function AlphaWaverseEngine() {
           }
         }
 
-        // 3. Cloud Sync
+        // 3. Cloud Sync (OPTIONAL - Don't block registration if this fails)
         if (cloudPayloads.length > 0) {
-          await supabase.from('p2p_assets').upsert(cloudPayloads);
+          try {
+            const { error: upsertError } = await supabase.from('p2p_assets').upsert(cloudPayloads);
+            if (upsertError) console.warn("Cloud Sync Failed but continuing locally", upsertError);
+          } catch (cloudErr) {
+            console.warn("Supabase Network Error", cloudErr);
+          }
         }
 
-        // 4. Update States
+        // 4. Update States (FINAL LOCAL UPDATE)
         setCustomUrls(prev => ({ ...prev, ...urlMap }));
         setCustomTitles(updatedTitles);
         setCustomProducers(updatedProducers);
@@ -878,12 +887,14 @@ export default function AlphaWaverseEngine() {
           ? `${newAssets.length}개의 자산이 성공적으로 등록되었습니다.` 
           : `${newAssets.length} assets registered successfully.`);
 
-      } catch (err) {
+      } catch (err: any) {
         console.error("Fast Parallel Registration Failed", err);
-        alert(lang === 'KR' ? "등록 중 오류가 발생했습니다." : "Error during registration.");
+        alert(lang === 'KR' 
+          ? `등록 중 오류가 발생했습니다: ${err.message || 'Unknown Error'}` 
+          : `Error during registration: ${err.message || 'Unknown Error'}`);
       } finally {
         setIsUploading(false);
-        e.target.value = '';
+        if (e.target) e.target.value = '';
       }
     };
 
