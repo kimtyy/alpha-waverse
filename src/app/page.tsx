@@ -6,7 +6,7 @@ import {
   Search, Activity, Music as MusicIcon, Zap, Globe, Library, PlusCircle,
   Share2, Heart, User, Cpu, CloudUpload, Play, Pause, SkipForward, SkipBack,
   Trash2, Loader2, Plus, Check, FileText, Mic2, TrendingUp, ShieldCheck, Coins, ChevronRight, ChevronDown, Home, ArrowLeft,
-  Video, RefreshCw, Layers, MoreVertical, X, Shuffle, Mail, HelpCircle
+  Video, RefreshCw, Layers, MoreVertical, X, Shuffle, Mail, HelpCircle, AlertTriangle
 } from 'lucide-react';
 import { WAVE_QUERY_DATA, SearchResult } from '@/data/omni-search';
 import { supabase } from '@/utils/supabase';
@@ -474,7 +474,7 @@ export default function AlphaWaverseEngine() {
     if (dbPromiseRef.current) return dbPromiseRef.current;
 
     dbPromiseRef.current = new Promise((resolve, reject) => {
-      const request = indexedDB.open('AlphaWaverseDB', 2); // Upgrade to version 2
+      const request = indexedDB.open('AlphaWaverseDB', 1);
       request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains('assets')) {
@@ -587,7 +587,20 @@ export default function AlphaWaverseEngine() {
     localStorage.setItem('alpha_waverse_legacy_ids', JSON.stringify(legacyAssetIds));
   }, [legacyAssetIds]);
 
+  const [isWebview, setIsWebview] = useState(false);
+
   useEffect(() => {
+    // Detect In-App Browsers (Kakao, Instagram, etc.)
+    const ua = navigator.userAgent.toLowerCase();
+    const isRestrictedWebview = 
+      ua.includes('kakaotalk') || 
+      ua.includes('instagram') || 
+      ua.includes('fban') || 
+      ua.includes('fbav') || 
+      ua.includes('line');
+    
+    setIsWebview(isRestrictedWebview);
+
     const savedLegacy = localStorage.getItem('alpha_waverse_legacy_ids');
     if (savedLegacy) setLegacyAssetIds(JSON.parse(savedLegacy));
 
@@ -603,7 +616,7 @@ export default function AlphaWaverseEngine() {
       if (savedOwned) {
         const ids = JSON.parse(savedOwned) as string[];
         setOwnedAssets(ids); // CRITICAL FIX: Restore the asset list to state
-        
+
         const urlMap: Record<string, string> = {};
         for (const id of ids) {
           if (id.startsWith('user-asset-')) {
@@ -646,7 +659,7 @@ export default function AlphaWaverseEngine() {
         console.error("Failed to load global P2P assets", err);
       }
     };
-    
+
     loadCloudAssets();
     const pollInterval = setInterval(loadCloudAssets, 5000);
     return () => clearInterval(pollInterval);
@@ -883,14 +896,14 @@ export default function AlphaWaverseEngine() {
           return updated;
         });
 
-        alert(lang === 'KR' 
-          ? `${newAssets.length}개의 자산이 성공적으로 등록되었습니다.` 
+        alert(lang === 'KR'
+          ? `${newAssets.length}개의 자산이 성공적으로 등록되었습니다.`
           : `${newAssets.length} assets registered successfully.`);
 
       } catch (err: any) {
         console.error("Fast Parallel Registration Failed", err);
-        alert(lang === 'KR' 
-          ? `등록 중 오류가 발생했습니다: ${err.message || 'Unknown Error'}` 
+        alert(lang === 'KR'
+          ? `등록 중 오류가 발생했습니다: ${err.message || 'Unknown Error'}`
           : `Error during registration: ${err.message || 'Unknown Error'}`);
       } finally {
         setIsUploading(false);
@@ -1391,6 +1404,26 @@ export default function AlphaWaverseEngine() {
 
   return (
     <main className="h-[100dvh] w-full bg-black text-white selection:bg-primary/30 flex flex-col items-center relative overflow-hidden font-sans">
+      {/* Webview Warning Banner */}
+      {isWebview && (
+        <div className="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white px-4 py-2 text-center text-[10px] md:text-xs font-bold animate-pulse flex justify-between items-center z-[9999] border-b border-white/10 shadow-lg">
+          <span className="flex-1 flex items-center justify-center gap-2">
+            <AlertTriangle size={14} className="shrink-0" />
+            {lang === 'KR' 
+              ? "⚠️ 카카오톡/인앱 브라우저에서는 구글 로그인이 제한될 수 있습니다. '외부 브라우저'로 열기를 권장합니다." 
+              : "⚠️ Google Login might be limited here. Please use an external browser (Chrome/Safari)."}
+          </span>
+          <button 
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              alert(lang === 'KR' ? "주소가 복사되었습니다. 크롬이나 사파리에 붙여넣어 주세요!" : "Link copied! Please paste it into Chrome or Safari.");
+            }}
+            className="bg-white/20 hover:bg-white/40 px-3 py-1 rounded-lg text-[9px] transition-all ml-2 whitespace-nowrap backdrop-blur-sm border border-white/20"
+          >
+            {lang === 'KR' ? "주소 복사" : "Copy Link"}
+          </button>
+        </div>
+      )}
 
       {/* Background Aura */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -2876,6 +2909,18 @@ export default function AlphaWaverseEngine() {
                 </div>
 
                 <div className="w-full space-y-3">
+                  {isWebview && (
+                    <div className="p-3 rounded-2xl bg-amber-600/20 border border-amber-600/40 text-amber-500 text-[10px] font-bold leading-relaxed mb-4">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                        <p>
+                          {lang === 'KR' 
+                            ? "현재 인앱 브라우저(카카오 등)를 사용 중입니다. 구글 로그인이 안 될 경우 '외부 브라우저(Chrome/Safari)'로 접속해 주세요." 
+                            : "You are in an In-App browser. If Google Login fails, please use Chrome or Safari."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <button
                     onClick={() => handleAuth('GOOGLE')}
                     disabled={isAuthLoading}
