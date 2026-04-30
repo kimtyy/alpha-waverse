@@ -1643,7 +1643,6 @@ export default function AlphaWaverseEngine() {
                             )}
                           </div>
                           <div
-                            onClick={() => { setActiveTrack(item); setPlaylist([...WAVE_QUERY_DATA, ...ownedDisplayList]); setIsPlaying(true); setIsPlayerExpanded(true); }}
                             onClick={() => masterPlay(item, [...WAVE_QUERY_DATA, ...ownedDisplayList])}
                             className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 mb-4 group-hover:scale-110 group-hover:bg-primary group-hover:text-black transition-all cursor-pointer"
                           >
@@ -2022,7 +2021,7 @@ export default function AlphaWaverseEngine() {
                             {item.title.includes('/') ? item.title.split('/')[0].trim() : item.title}
                           </h3>
                           <p className="text-[10px] font-medium text-white/40 truncate uppercase tracking-wider">
-                            {item.title.includes('/') ? item.title.split('/').slice(1).join(' x ') : (customProducers[item.id] || "OWNER")} • {item.type}
+                            {item.title.includes('/') ? item.title.split('/').slice(1).join(' x ').replace(/OWNER/gi, 'NODE') : (customProducers[item.id] || "NODE").replace(/OWNER/gi, 'NODE')} • {item.type}
                           </p>
                         </div>
                       </div>
