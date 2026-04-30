@@ -695,7 +695,18 @@ export default function AlphaWaverseEngine() {
     const playAudio = async () => {
       if (!audioRef.current || !activeTrack) return;
       
-      const currentUrl = customUrls[activeTrack.id] || activeTrack.url;
+      let currentUrl = customUrls[activeTrack.id] || activeTrack.url;
+      
+      // 1. If URL is missing, try recovering from local database
+      if (!currentUrl) {
+        console.log("URL missing for track, attempting recovery...");
+        const restored = await loadFromIndexedDB(activeTrack.id);
+        if (restored) {
+          currentUrl = restored;
+          setCustomUrls(prev => ({ ...prev, [activeTrack.id]: restored }));
+        }
+      }
+
       if (!currentUrl) {
         setAudioStatus('ERROR');
         setPlaybackError("File address missing");
