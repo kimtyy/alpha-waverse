@@ -694,9 +694,14 @@ export default function AlphaWaverseEngine() {
       if (!audioRef.current || !activeTrack) return;
 
       try {
-        // 1. Resolve URL (Local Priority)
-        const currentUrl = customUrls[activeTrack.id] || activeTrack.url;
+        // 1. Resolve URL (Local Priority & Cache Busting)
+        let currentUrl = customUrls[activeTrack.id] || activeTrack.url;
         if (!currentUrl) return;
+
+        // Add cache buster for remote URLs to bypass browser caching issues
+        if (currentUrl.startsWith('http')) {
+          currentUrl = `${currentUrl}${currentUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`;
+        }
 
         // 2. Local assets skip P2P requests to avoid latency/blocks
         const isLocalAsset = activeTrack.id.startsWith('user-asset-');
@@ -2488,6 +2493,7 @@ export default function AlphaWaverseEngine() {
 
       <audio
         ref={audioRef}
+        crossOrigin="anonymous"
         onPlay={() => setIsActuallyPlaying(true)}
         onPause={() => setIsActuallyPlaying(false)}
         onWaiting={() => setIsActuallyPlaying(false)}
