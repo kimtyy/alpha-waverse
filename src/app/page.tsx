@@ -718,6 +718,11 @@ export default function AlphaWaverseEngine() {
         if (audioRef.current.src !== currentUrl || audioRef.current.ended || audioRef.current.error) {
           audioRef.current.src = currentUrl;
           audioRef.current.load();
+        // 4. Smart CORS (Critical Fix: Blobs hate crossOrigin)
+        if (currentUrl.startsWith('blob:')) {
+          audioRef.current.removeAttribute('crossOrigin');
+        } else {
+          audioRef.current.setAttribute('crossOrigin', 'anonymous');
         }
 
         if (isPlaying) {
@@ -726,7 +731,11 @@ export default function AlphaWaverseEngine() {
           if (playPromise !== undefined) {
             await playPromise.catch(e => {
               console.error("Play Failed:", e);
-              setPlaybackError("Touch screen to enable audio");
+              if (e.name === 'NotAllowedError') {
+                setPlaybackError("Tap anywhere to enable sound");
+              } else {
+                setPlaybackError("Sound system blocked");
+              }
             });
           }
         } else {
@@ -747,7 +756,14 @@ export default function AlphaWaverseEngine() {
       }
     };
 
+    const timer = setTimeout(() => {
+      if (isPlaying && !isActuallyPlaying && !playbackError) {
+        setPlaybackError("Loading stalled... Try Play again");
+      }
+    }, 5000);
+
     playAudio();
+    return () => clearTimeout(timer);
   }, [activeTrack, isPlaying, customUrls]);
 
   // Handle Song Ended (Continuous Play)
@@ -2498,7 +2514,6 @@ export default function AlphaWaverseEngine() {
 
       <audio
         ref={audioRef}
-        crossOrigin="anonymous"
         onPlay={() => { setIsActuallyPlaying(true); setPlaybackError(null); }}
         onPause={() => setIsActuallyPlaying(false)}
         onWaiting={() => { console.log("Buffering..."); }}
