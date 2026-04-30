@@ -650,9 +650,13 @@ export default function AlphaWaverseEngine() {
           const urlMap: Record<string, string> = {};
 
           for (const asset of cloudAssets) {
+            // DEEP PURGE: Replace 'Owner' at the data level
+            const cleanProducer = (asset.producer || 'Alpha Node').replace(/OWNER/gi, 'NODE');
+            const cleanArtist = (asset.artist || 'Alpha Node').replace(/OWNER/gi, 'NODE');
+            
             ids.push(asset.asset_id);
-            titlesMap[asset.asset_id] = `${asset.title} / ${asset.artist || 'Alpha Node'} / ${asset.producer || 'Alpha Node'}`;
-            producersMap[asset.asset_id] = asset.producer || 'Alpha Node';
+            titlesMap[asset.asset_id] = `${asset.title} / ${cleanArtist} / ${cleanProducer}`;
+            producersMap[asset.asset_id] = cleanProducer;
             
             // CRITICAL FALLBACK: Construct URL if missing with CORRECT project ID
             if (asset.url) {
