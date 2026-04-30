@@ -597,11 +597,13 @@ export default function AlphaWaverseEngine() {
     const savedProducer = localStorage.getItem('alpha_waverse_default_producer');
     if (savedProducer) setDefaultProducer(savedProducer);
 
-    // Load custom URLs from IndexedDB
+    // Load custom URLs from IndexedDB and restore ownedAssets list
     const loadAllCustomUrls = async () => {
       const savedOwned = localStorage.getItem('alpha_waverse_owned');
       if (savedOwned) {
         const ids = JSON.parse(savedOwned) as string[];
+        setOwnedAssets(ids); // CRITICAL FIX: Restore the asset list to state
+        
         const urlMap: Record<string, string> = {};
         for (const id of ids) {
           if (id.startsWith('user-asset-')) {
