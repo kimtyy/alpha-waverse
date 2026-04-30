@@ -467,15 +467,13 @@ export default function AlphaWaverseEngine() {
     });
   };
 
-  // IndexedDB Singleton DB Cache to prevent blocking I/O
-  const dbRef = useRef<IDBDatabase | null>(null);
+  // IndexedDB Singleton DB Cache with Connection Pooling
+  const dbPromiseRef = useRef<Promise<IDBDatabase> | null>(null);
 
   const getDB = (): Promise<IDBDatabase> => {
-    return new Promise((resolve, reject) => {
-      if (dbRef.current) {
-        resolve(dbRef.current);
-        return;
-      }
+    if (dbPromiseRef.current) return dbPromiseRef.current;
+
+    dbPromiseRef.current = new Promise((resolve, reject) => {
       const request = indexedDB.open('AlphaWaverseDB', 1);
       request.onupgradeneeded = () => {
         const db = request.result;
@@ -483,12 +481,13 @@ export default function AlphaWaverseEngine() {
           db.createObjectStore('assets');
         }
       };
-      request.onsuccess = () => {
-        dbRef.current = request.result;
-        resolve(request.result);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => {
+        dbPromiseRef.current = null; // Reset on error to allow retry
+        reject(request.error);
       };
-      request.onerror = () => reject(request.error);
     });
+    return dbPromiseRef.current;
   };
 
   const saveToIndexedDB = async (id: string, file: File) => {
@@ -496,12 +495,14 @@ export default function AlphaWaverseEngine() {
       const db = await getDB();
       return new Promise((resolve, reject) => {
         const tx = db.transaction('assets', 'readwrite');
-        tx.objectStore('assets').put(file, id);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
+        const store = tx.objectStore('assets');
+        const request = store.put(file, id);
+        request.onsuccess = () => resolve(true);
+        request.onerror = () => reject(request.error);
       });
     } catch (e) {
       console.error("saveToIndexedDB Error", e);
+      dbPromiseRef.current = null; // Force reconnection on failure
       return false;
     }
   };
@@ -793,7 +794,6 @@ export default function AlphaWaverseEngine() {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Filter out duplicates using filename + size as a simple signature
     const newFiles = files.filter(f => !registeredFilenames.has(`${f.name}-${f.size}`));
     const duplicatesCount = files.length - newFiles.length;
 
@@ -808,31 +808,28 @@ export default function AlphaWaverseEngine() {
       return;
     }
 
-    // NEW: Immediate Batch Registration Flow with Cloud Sync
     setIsUploading(true);
 
-    // Process all files in background
-    setTimeout(async () => {
-      const newAssets: string[] = [];
-      const newSigs = new Set(registeredFilenames);
-      const updatedTitles = { ...customTitles };
-      const updatedProducers = { ...customProducers };
-      const urlMap: Record<string, string> = {};
-      const cloudPayloads: any[] = [];
-
-      // Generate IDs and metadata upfront
-      const fileData = newFiles.map(file => {
-        const newId = `user-asset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        const { title, artist } = parseFilename(file.name);
-        const fullTitle = `${title} / ${artist} / ${defaultProducer}`;
-        return { file, newId, title, artist, fullTitle };
-      });
-
+    const handleRegistration = async () => {
       try {
-        // 1. Parallel IndexedDB Saves (Much faster for large files)
+        const newAssets: string[] = [];
+        const newSigs = new Set(registeredFilenames);
+        const updatedTitles = { ...customTitles };
+        const updatedProducers = { ...customProducers };
+        const urlMap: Record<string, string> = {};
+        const cloudPayloads: any[] = [];
+
+        const fileData = newFiles.map(file => {
+          const newId = `user-asset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+          const { title, artist } = parseFilename(file.name);
+          const fullTitle = `${title} / ${artist} / ${defaultProducer}`;
+          return { file, newId, title, artist, fullTitle };
+        });
+
+        // 1. Parallel IndexedDB Saves
         await Promise.all(fileData.map(d => saveToIndexedDB(d.newId, d.file)));
 
-        // 2. Map local state updates & cloud payloads
+        // 2. Map local & cloud data
         for (const d of fileData) {
           const finalUrl = URL.createObjectURL(d.file);
           urlMap[d.newId] = finalUrl;
@@ -854,35 +851,41 @@ export default function AlphaWaverseEngine() {
           }
         }
 
-        // 3. One single batch request to Cloud Tracker (Super Fast!)
+        // 3. Cloud Sync
         if (cloudPayloads.length > 0) {
           await supabase.from('p2p_assets').upsert(cloudPayloads);
         }
 
+        // 4. Update States
+        setCustomUrls(prev => ({ ...prev, ...urlMap }));
+        setCustomTitles(updatedTitles);
+        setCustomProducers(updatedProducers);
+        localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
+        localStorage.setItem('alpha_waverse_custom_producers', JSON.stringify(updatedProducers));
+
+        setRegisteredFilenames(newSigs);
+        localStorage.setItem('alpha_waverse_registered_filenames', JSON.stringify(Array.from(newSigs)));
+
+        setOwnedAssets(prev => {
+          const updated = [...newAssets, ...prev];
+          localStorage.setItem('alpha_waverse_owned', JSON.stringify(updated));
+          return updated;
+        });
+
+        alert(lang === 'KR' 
+          ? `${newAssets.length}개의 자산이 성공적으로 등록되었습니다.` 
+          : `${newAssets.length} assets registered successfully.`);
+
       } catch (err) {
         console.error("Fast Parallel Registration Failed", err);
+        alert(lang === 'KR' ? "등록 중 오류가 발생했습니다." : "Error during registration.");
+      } finally {
+        setIsUploading(false);
+        e.target.value = '';
       }
+    };
 
-      setCustomUrls(prev => ({ ...prev, ...urlMap }));
-      setCustomTitles(updatedTitles);
-      setCustomProducers(updatedProducers);
-      localStorage.setItem('alpha_waverse_custom_titles', JSON.stringify(updatedTitles));
-      localStorage.setItem('alpha_waverse_custom_producers', JSON.stringify(updatedProducers));
-
-      setRegisteredFilenames(newSigs);
-      localStorage.setItem('alpha_waverse_registered_filenames', JSON.stringify(Array.from(newSigs)));
-
-      setOwnedAssets(prev => {
-        const updated = [...newAssets, ...prev];
-        localStorage.setItem('alpha_waverse_owned', JSON.stringify(updated));
-        return updated;
-      });
-      setIsUploading(false);
-
-      // No blocking alerts
-    }, 10);
-
-    e.target.value = '';
+    handleRegistration();
   };
 
   const toggleSelection = (id: string, e?: React.MouseEvent) => {
