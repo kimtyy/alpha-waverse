@@ -2188,12 +2188,12 @@ export default function AlphaWaverseEngine() {
               <div className="absolute bottom-1/4 right-1/4 w-[50%] h-[50%] bg-secondary/15 blur-[180px] rounded-full" />
             </div>
 
-            <div className="relative z-10 flex flex-col h-full w-full max-w-lg mx-auto pt-6 px-8 pb-10">
+            <div className="relative z-10 flex flex-col h-full w-full max-w-lg mx-auto pt-4 px-6 pb-10">
               {/* MAIN CONTENT - VISUAL FOCUS */}
               <div className="flex-1 flex flex-col items-center justify-center min-h-0">
                 <motion.div
                   layoutId="player-art"
-                  className="w-full max-w-[340px] aspect-square premium-glass rounded-[2rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden group flex shrink items-center justify-center"
+                  className="w-[85vw] max-w-[380px] aspect-square premium-glass rounded-[2.5rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden group flex shrink items-center justify-center"
                 >
                   {(activeTrack as any)?.type === 'MP4' ? (
                     <div className="absolute inset-0 bg-black flex flex-col items-center justify-center">
