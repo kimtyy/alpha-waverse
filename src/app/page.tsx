@@ -696,9 +696,20 @@ export default function AlphaWaverseEngine() {
       if (!audioRef.current || !activeTrack) return;
 
       try {
-        // 1. Resolve URL (Local Priority & Cache Busting)
         let currentUrl = customUrls[activeTrack.id] || activeTrack.url;
-        if (!currentUrl) return;
+        
+        if (!currentUrl) {
+          console.warn("No URL found for track, attempting database recovery...");
+          const restored = await loadFromIndexedDB(activeTrack.id);
+          if (restored) {
+            currentUrl = restored;
+            setCustomUrls(prev => ({ ...prev, [activeTrack.id!]: restored }));
+          } else {
+            setAudioStatus('ERROR');
+            setPlaybackError("File address missing");
+            return;
+          }
+        }
 
         setAudioStatus('LOADING');
         // Always reload if src changes
@@ -2278,10 +2289,11 @@ export default function AlphaWaverseEngine() {
                       />
                     ))}
                   </div>
-                  {/* SYSTEM STATUS BADGE */}
-                  <div className="flex items-center gap-2">
-                    <div className={`w-1.5 h-1.5 rounded-full ${audioStatus === 'PLAYING' ? 'bg-green-500 animate-pulse' : audioStatus === 'LOADING' ? 'bg-yellow-500 animate-spin' : 'bg-red-500'}`} />
-                    <span className="text-[7px] font-black tracking-[0.2em] text-white/40 uppercase">System: {audioStatus}</span>
+                  <div className="flex items-center gap-2 px-3 py-1 bg-black/40 rounded-full border border-white/5">
+                    <div className={`w-2 h-2 rounded-full ${audioStatus === 'PLAYING' ? 'bg-green-500 animate-pulse' : audioStatus === 'LOADING' ? 'bg-yellow-500 animate-spin' : audioStatus === 'ERROR' ? 'bg-red-500' : 'bg-white/20'}`} />
+                    <span className={`text-[9px] font-black tracking-[0.2em] uppercase ${audioStatus === 'ERROR' ? 'text-red-500' : 'text-white/60'}`}>
+                      {audioStatus} {playbackError ? `| ${playbackError}` : ''}
+                    </span>
                   </div>
                 </div>
 
