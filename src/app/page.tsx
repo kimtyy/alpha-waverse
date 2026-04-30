@@ -659,10 +659,13 @@ export default function AlphaWaverseEngine() {
             producersMap[asset.asset_id] = cleanProducer;
             
             // CRITICAL FALLBACK: Construct URL if missing with CORRECT project ID
-            if (asset.url) {
+            // Check if we have a local override first (from this session)
+            if (customUrls[asset.asset_id]) {
+              urlMap[asset.asset_id] = customUrls[asset.asset_id];
+            } else if (asset.url) {
               urlMap[asset.asset_id] = asset.url;
             } else {
-              // Standard Supabase Public URL pattern for our project
+              // Standard Supabase Public URL for our project
               urlMap[asset.asset_id] = `https://axokpoqyabndljojebns.supabase.co/storage/v1/object/public/assets/${asset.asset_id}`;
             }
           }
