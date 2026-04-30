@@ -690,33 +690,47 @@ export default function AlphaWaverseEngine() {
     }
 
     const playAudio = async () => {
+      if (!audioRef.current || !activeTrack) return;
+
       try {
-        if (!isP2PHost && isP2PConnected && dataChannelRef.current?.readyState === 'open') {
+        // 1. Resolve URL (Local Priority)
+        const currentUrl = customUrls[activeTrack.id] || activeTrack.url;
+        if (!currentUrl) return;
+
+        // 2. Local assets skip P2P requests to avoid latency/blocks
+        const isLocalAsset = activeTrack.id.startsWith('user-asset-');
+        if (!isLocalAsset && !isP2PHost && isP2PConnected && dataChannelRef.current?.readyState === 'open') {
           dataChannelRef.current.send(JSON.stringify({ type: 'REQUEST_ASSET', assetId: activeTrack.id }));
         }
 
-        // Resolve the most current URL (prioritize customUrls for user assets)
-        const currentUrl = customUrls[activeTrack.id] || activeTrack.url;
+        // 3. Audio Element Optimization
+        audioRef.current.volume = 1.0;
+        audioRef.current.muted = false;
 
-        if (audioRef.current!.src !== currentUrl) {
-          audioRef.current!.src = currentUrl;
-          audioRef.current!.load();
+        // Always reload if src changes OR if it was in an error/ended state
+        if (audioRef.current.src !== currentUrl || audioRef.current.ended || audioRef.current.error) {
+          audioRef.current.src = currentUrl;
+          audioRef.current.load();
         }
 
         if (isPlaying) {
-          await audioRef.current!.play();
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            await playPromise;
+          }
         } else {
-          audioRef.current!.pause();
+          audioRef.current.pause();
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Playback System Error:", err);
-        // If it's a user asset and playback failed, try to restore from IndexedDB
+        // Special recovery for user assets (Reload from IndexedDB)
         if (activeTrack.id.startsWith('user-asset-')) {
           const restoredUrl = await loadFromIndexedDB(activeTrack.id);
           if (restoredUrl && audioRef.current) {
             setCustomUrls(prev => ({ ...prev, [activeTrack.id]: restoredUrl }));
             audioRef.current.src = restoredUrl;
-            if (isPlaying) audioRef.current.play().catch(e => console.log("Final recovery failed", e));
+            audioRef.current.load(); // Ensure load is called here too
+            if (isPlaying) await audioRef.current.play().catch(e => console.warn("Recovery play failed", e));
           }
         }
       }
