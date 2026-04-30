@@ -125,6 +125,7 @@ export default function AlphaWaverseEngine() {
   const [playlist, setPlaylist] = useState<SearchResult[]>([]);
   const [isActuallyPlaying, setIsActuallyPlaying] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -720,9 +721,13 @@ export default function AlphaWaverseEngine() {
         }
 
         if (isPlaying) {
+          setPlaybackError(null);
           const playPromise = audioRef.current.play();
           if (playPromise !== undefined) {
-            await playPromise;
+            await playPromise.catch(e => {
+              console.error("Play Failed:", e);
+              setPlaybackError("Touch screen to enable audio");
+            });
           }
         } else {
           audioRef.current.pause();
@@ -2494,16 +2499,29 @@ export default function AlphaWaverseEngine() {
       <audio
         ref={audioRef}
         crossOrigin="anonymous"
-        onPlay={() => setIsActuallyPlaying(true)}
+        onPlay={() => { setIsActuallyPlaying(true); setPlaybackError(null); }}
         onPause={() => setIsActuallyPlaying(false)}
-        onWaiting={() => setIsActuallyPlaying(false)}
-        onPlaying={() => setIsActuallyPlaying(true)}
+        onWaiting={() => { console.log("Buffering..."); }}
+        onPlaying={() => { setIsActuallyPlaying(true); setPlaybackError(null); }}
         onEnded={() => { setIsActuallyPlaying(false); handleTrackEnd(); }}
-        onError={() => setIsActuallyPlaying(false)}
+        onError={(e) => { 
+          console.error("Audio Error:", e);
+          setPlaybackError("Sound blocked or missing");
+          setIsActuallyPlaying(false);
+        }}
         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        className="hidden"
+        className="fixed bottom-0 left-0 w-1 h-1 opacity-[0.01] pointer-events-none"
       />
+
+      {/* EMERGENCY ERROR OVERLAY */}
+      {playbackError && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[999] bg-red-600 text-white px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest shadow-2xl animate-bounce flex items-center gap-3">
+          <AlertTriangle size={14} />
+          <span>{playbackError}</span>
+          <button onClick={() => { setIsPlaying(false); setTimeout(() => setIsPlaying(true), 100); }} className="bg-white text-black px-2 py-1 rounded-md">Retry</button>
+        </div>
+      )}
 
 
 
