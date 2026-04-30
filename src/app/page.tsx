@@ -1649,11 +1649,11 @@ export default function AlphaWaverseEngine() {
                           >
                             <MusicIcon size={20} />
                           </div>
-                          <h3 className="font-bold text-lg md:text-xl tracking-tight mb-1 truncate">{item.title}</h3>
+                          <h3 className="font-bold text-lg md:text-xl tracking-tight mb-1 truncate">{(item.title || "Untitled").replace(/OWNER/gi, 'NODE')}</h3>
                           <div className="flex items-center gap-2 text-[8px] font-black uppercase opacity-30">
-                            <span className="text-primary">{item.category}</span>
+                            <span className="text-primary">{(item.category || "General").replace(/OWNER/gi, 'NODE')}</span>
                             <span className="w-0.5 h-0.5 rounded-full bg-white" />
-                            <span>{item.isrc}</span>
+                            <span>{(item.isrc || "").replace(/OWNER/gi, 'NODE')}</span>
                           </div>
                         </div>
                       ))}
@@ -2334,6 +2334,13 @@ export default function AlphaWaverseEngine() {
                     <span className={`text-[9px] font-black tracking-[0.2em] uppercase ${audioStatus === 'ERROR' ? 'text-red-500' : 'text-white/60'}`}>
                       {audioStatus} {playbackError ? `| ${playbackError}` : ''}
                     </span>
+                    {audioStatus === 'ERROR' && activeTrack && (
+                      <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-full text-center">
+                        <p className="text-[6px] text-white/10 break-all px-4">
+                          URL: {customUrls[activeTrack.id] || activeTrack.url || `https://axokpoqyabndljojebns.supabase.co/storage/v1/object/public/assets/${activeTrack.id}`}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
