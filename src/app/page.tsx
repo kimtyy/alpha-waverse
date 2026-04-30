@@ -654,12 +654,12 @@ export default function AlphaWaverseEngine() {
             titlesMap[asset.asset_id] = `${asset.title} / ${asset.artist || 'Alpha Node'} / ${asset.producer || 'Alpha Node'}`;
             producersMap[asset.asset_id] = asset.producer || 'Alpha Node';
             
-            // CRITICAL FALLBACK: Construct URL if missing
+            // CRITICAL FALLBACK: Construct URL if missing with CORRECT project ID
             if (asset.url) {
               urlMap[asset.asset_id] = asset.url;
             } else {
-              // Standard Supabase Public URL pattern
-              urlMap[asset.asset_id] = `https://owfujizofkyqfksquofp.supabase.co/storage/v1/object/public/assets/${asset.asset_id}`;
+              // Standard Supabase Public URL pattern for our project
+              urlMap[asset.asset_id] = `https://axokpoqyabndljojebns.supabase.co/storage/v1/object/public/assets/${asset.asset_id}`;
             }
           }
 
@@ -936,6 +936,36 @@ export default function AlphaWaverseEngine() {
     };
 
     handleRegistration();
+  };
+
+  const masterPlay = (track: any) => {
+    if (!audioRef.current) return;
+    const url = customUrls[track.id] || track.url || `https://owfujizofkyqfksquofp.supabase.co/storage/v1/object/public/assets/${track.id}`;
+    
+    setActiveTrack(track);
+    setIsPlaying(true);
+    setAudioStatus('LOADING');
+    
+    if (audioRef.current.src !== url) {
+      audioRef.current.src = url;
+      audioRef.current.load();
+    }
+    
+    audioRef.current.muted = false;
+    audioRef.current.volume = 1.0;
+    
+    audioRef.current.play()
+      .then(() => {
+        setAudioStatus('PLAYING');
+        setPlaybackError('');
+        setIsActuallyPlaying(true);
+      })
+      .catch(err => {
+        console.error("MasterPlay failed:", err);
+        setAudioStatus('ERROR');
+        setPlaybackError(err.name === 'NotAllowedError' ? 'BROWSER BLOCK' : 'FILE MISSING');
+        setIsActuallyPlaying(false);
+      });
   };
 
   const toggleSelection = (id: string, e?: React.MouseEvent) => {
@@ -1614,6 +1644,7 @@ export default function AlphaWaverseEngine() {
                           </div>
                           <div
                             onClick={() => { setActiveTrack(item); setPlaylist([...WAVE_QUERY_DATA, ...ownedDisplayList]); setIsPlaying(true); setIsPlayerExpanded(true); }}
+                            onClick={() => masterPlay(item, [...WAVE_QUERY_DATA, ...ownedDisplayList])}
                             className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 mb-4 group-hover:scale-110 group-hover:bg-primary group-hover:text-black transition-all cursor-pointer"
                           >
                             <MusicIcon size={20} />
@@ -1645,12 +1676,12 @@ export default function AlphaWaverseEngine() {
                         filteredResults.map((result) => (
                           <div
                             key={result.id}
-                            className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between group transition-all ${activeTrack?.id === result.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5'}`}
+                            onClick={() => masterPlay(result, filteredResults)}
+                            className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between group transition-all cursor-pointer ${activeTrack?.id === result.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5'}`}
                           >
                             <div className="flex items-center gap-4 flex-1 min-w-0">
                               <div
-                                onClick={() => { setActiveTrack(result); setPlaylist(filteredResults); setIsPlaying(true); setIsPlayerExpanded(true); }}
-                                className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
+                                className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
                               >
                                 {activeTrack?.id === result.id && isActuallyPlaying ? (
                                   <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
@@ -1670,7 +1701,7 @@ export default function AlphaWaverseEngine() {
                               </div>
                             </div>
                             <div className="flex items-center gap-1 transition-opacity">
-                              <button onClick={(e) => toggleLike(result.id, e)} className={`p-2 transition-all ${likedTracks.includes(result.id) ? 'text-red-500' : 'text-white/20 hover:text-red-500'}`}>
+                              <button onClick={(e) => { e.stopPropagation(); toggleLike(result.id, e); }} className={`p-2 transition-all ${likedTracks.includes(result.id) ? 'text-red-500' : 'text-white/20 hover:text-red-500'}`}>
                                 <Heart size={16} fill={likedTracks.includes(result.id) ? "currentColor" : "none"} />
                               </button>
                               <button className="p-2 text-white/40 hover:text-white"><MoreVertical size={16} /></button>
@@ -1734,17 +1765,17 @@ export default function AlphaWaverseEngine() {
                 {filteredVaultList.map(item => (
                   <div
                     key={item.id}
-                    className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between transition-all ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-white/5 group'}`}
+                    onClick={() => masterPlay(item, filteredVaultList)}
+                    className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-white/5 group'}`}
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div
-                        onClick={(e) => toggleSelection(item.id, e)}
+                        onClick={(e) => { e.stopPropagation(); toggleSelection(item.id, e); }}
                         className={`cursor-pointer w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${selectedTrackIds.includes(item.id) ? 'bg-red-500 border-red-500' : 'border-white/10 hover:border-red-500'}`}
                       >
                         {selectedTrackIds.includes(item.id) && <Check size={12} className="text-white" />}
                       </div>
                       <div
-                        onClick={() => { setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); }}
                         className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
                       >
                         {activeTrack?.id === item.id && isActuallyPlaying ? (
@@ -1765,7 +1796,7 @@ export default function AlphaWaverseEngine() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 transition-opacity relative">
-                      <button onClick={(e) => removeFromVault(item.id, e)} className="p-2 text-white/20 hover:text-red-500 transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); removeFromVault(item.id, e); }} className="p-2 text-white/20 hover:text-red-500 transition-colors">
                         <Trash2 size={16} />
                       </button>
                       <button
@@ -1778,21 +1809,21 @@ export default function AlphaWaverseEngine() {
                       {activeDropdownId === item.id && (
                         <div className="absolute right-0 top-10 w-36 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 z-[150] shadow-2xl">
                           <button
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('SCORE', item); }}
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); masterPlay(item, filteredVaultList); handleAITask('SCORE', item); }}
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <FileText size={12} className="text-primary" />
                             {lang === 'KR' ? '악보 추출' : 'Extract Score'}
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('MR', item); }}
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); masterPlay(item, filteredVaultList); handleAITask('MR', item); }}
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <Mic2 size={12} className="text-secondary" />
                             {lang === 'KR' ? 'MR 추출' : 'Extract MR'}
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item); setPlaylist(filteredVaultList); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('LYRICS', item); }}
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); masterPlay(item, filteredVaultList); handleAITask('LYRICS', item); }}
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                           >
                             <MusicIcon size={12} className="text-red-500" />
@@ -1961,17 +1992,17 @@ export default function AlphaWaverseEngine() {
                 {filteredOwnedList.map(item => (
                   <div key={item.id} className="flex flex-col gap-2">
                     <div
-                      className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between transition-all ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5 group'}`}
+                      onClick={() => masterPlay(item as any, filteredOwnedList as any)}
+                      className={`premium-glass p-3 rounded-2xl border border-white/5 flex items-center justify-between transition-all cursor-pointer ${activeTrack?.id === item.id ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5 group'}`}
                     >
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div
-                          onClick={(e) => toggleSelection(item.id, e)}
+                          onClick={(e) => { e.stopPropagation(); toggleSelection(item.id, e); }}
                           className={`cursor-pointer w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${selectedTrackIds.includes(item.id) ? 'bg-primary border-primary' : 'border-white/10 hover:border-primary'}`}
                         >
                           {selectedTrackIds.includes(item.id) && <Check size={12} className="text-black" />}
                         </div>
                         <div
-                          onClick={() => { setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); }}
                           className="cursor-pointer w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 relative overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
                         >
                           {activeTrack?.id === item.id && isActuallyPlaying ? (
@@ -2003,7 +2034,7 @@ export default function AlphaWaverseEngine() {
                           <RefreshCw size={16} />
                         </button>
                         <button
-                          onClick={(e) => deleteAsset(item.id, e)}
+                          onClick={(e) => { e.stopPropagation(); deleteAsset(item.id, e); }}
                           className="p-2 text-white/20 hover:text-red-500 transition-colors"
                         >
                           <Trash2 size={16} />
@@ -2019,21 +2050,21 @@ export default function AlphaWaverseEngine() {
                           {activeDropdownId === item.id && (
                             <div className="absolute right-0 top-10 w-36 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 z-[150] shadow-2xl">
                               <button
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('SCORE', item as any); }}
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); masterPlay(item as any, filteredOwnedList as any); handleAITask('SCORE', item as any); }}
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <FileText size={12} className="text-primary" />
                                 {lang === 'KR' ? '악보 추출' : 'Extract Score'}
                               </button>
                               <button
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('MR', item as any); }}
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); masterPlay(item as any, filteredOwnedList as any); handleAITask('MR', item as any); }}
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <Mic2 size={12} className="text-secondary" />
                                 {lang === 'KR' ? 'MR 추출' : 'Extract MR'}
                               </button>
                               <button
-                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); setActiveTrack(item as any); setPlaylist(filteredOwnedList as any); setIsPlaying(true); setIsPlayerExpanded(true); handleAITask('LYRICS', item as any); }}
+                                onClick={(e) => { e.stopPropagation(); setActiveDropdownId(null); masterPlay(item as any, filteredOwnedList as any); handleAITask('LYRICS', item as any); }}
                                 className="w-full text-left px-3 py-2 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
                               >
                                 <MusicIcon size={12} className="text-red-500" />
@@ -2078,7 +2109,7 @@ export default function AlphaWaverseEngine() {
                             </div>
                             <div className="flex items-center gap-3">
                               <button
-                                onClick={() => { setActiveTrack({ ...item, title: `${item.title} (MR)` } as any); setIsPlaying(true); }}
+                                onClick={() => masterPlay({ ...item, title: `${item.title} (MR)` } as any)}
                                 className="text-[8px] font-black uppercase text-secondary hover:underline"
                               >
                                 Play
@@ -2326,7 +2357,16 @@ export default function AlphaWaverseEngine() {
                     <SkipBack size={24} fill="currentColor" />
                   </button>
                   <button
-                    onClick={() => setIsPlaying(!isPlaying)}
+                    onClick={() => {
+                      if (isPlaying) {
+                        audioRef.current?.pause();
+                        setIsPlaying(false);
+                        setIsActuallyPlaying(false);
+                        setAudioStatus('IDLE');
+                      } else if (activeTrack) {
+                        masterPlay(activeTrack);
+                      }
+                    }}
                     className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow-[0_10px_30px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all"
                   >
                     {isPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} className="ml-1" fill="currentColor" />}
