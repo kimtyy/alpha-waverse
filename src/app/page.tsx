@@ -653,7 +653,14 @@ export default function AlphaWaverseEngine() {
             ids.push(asset.asset_id);
             titlesMap[asset.asset_id] = `${asset.title} / ${asset.artist || 'Alpha Node'} / ${asset.producer || 'Alpha Node'}`;
             producersMap[asset.asset_id] = asset.producer || 'Alpha Node';
-            if (asset.url) urlMap[asset.asset_id] = asset.url;
+            
+            // CRITICAL FALLBACK: Construct URL if missing
+            if (asset.url) {
+              urlMap[asset.asset_id] = asset.url;
+            } else {
+              // Standard Supabase Public URL pattern
+              urlMap[asset.asset_id] = `https://owfujizofkyqfksquofp.supabase.co/storage/v1/object/public/assets/${asset.asset_id}`;
+            }
           }
 
           setOwnedAssets(prev => Array.from(new Set([...ids, ...prev])));
