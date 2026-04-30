@@ -694,72 +694,38 @@ export default function AlphaWaverseEngine() {
 
     const playAudio = async () => {
       if (!audioRef.current || !activeTrack) return;
+      
+      const currentUrl = customUrls[activeTrack.id] || activeTrack.url;
+      if (!currentUrl) {
+        setAudioStatus('ERROR');
+        setPlaybackError("File address missing");
+        return;
+      }
 
       try {
-        let currentUrl = customUrls[activeTrack.id] || activeTrack.url;
-        
-        if (!currentUrl) {
-          console.warn("No URL found for track, attempting database recovery...");
-          const restored = await loadFromIndexedDB(activeTrack.id);
-          if (restored) {
-            currentUrl = restored;
-            setCustomUrls(prev => ({ ...prev, [activeTrack.id!]: restored }));
-          } else {
-            setAudioStatus('ERROR');
-            setPlaybackError("File address missing");
-            return;
-          }
-        }
-
-        setAudioStatus('LOADING');
-        // Always reload if src changes
         if (audioRef.current.src !== currentUrl) {
           audioRef.current.src = currentUrl;
-          audioRef.current.load();
-        }
-
-        // 4. Smart CORS (Critical Fix: Blobs hate crossOrigin)
-        if (currentUrl.startsWith('blob:')) {
-          audioRef.current.removeAttribute('crossOrigin');
-        } else {
-          audioRef.current.setAttribute('crossOrigin', 'anonymous');
         }
 
         if (isPlaying) {
+          setAudioStatus('LOADING');
           setPlaybackError(null);
-          const playPromise = audioRef.current.play();
-          if (playPromise !== undefined) {
-            await playPromise.then(() => {
-              setAudioStatus('PLAYING');
-            }).catch(e => {
-              setAudioStatus('ERROR');
-              if (e.name === 'NotAllowedError') setPlaybackError("Tap to enable sound");
-            });
-          }
+          await audioRef.current.play();
         } else {
           audioRef.current.pause();
           setAudioStatus('IDLE');
         }
       } catch (err: any) {
-        console.error("Playback System Error:", err);
-        setAudioStatus('ERROR');
-        setPlaybackError("Engine Error: Retrying...");
+        if (err.name === 'NotAllowedError') {
+          setPlaybackError("Tap to enable sound");
+        } else {
+          console.error("Playback Error:", err);
+          setAudioStatus('ERROR');
+        }
       }
     };
 
-    const timer = setTimeout(() => {
-      if (isPlaying && !isActuallyPlaying && !playbackError) {
-        console.warn("Watchdog: Playback stalled. Attempting engine recovery...");
-        setPlaybackError("Engine retrying... Wait 2s");
-        if (audioRef.current) {
-          audioRef.current.load(); // Force browser to re-fetch/re-buffer
-          audioRef.current.play().catch(() => {}); // Attempt re-play
-        }
-      }
-    }, 6000);
-
     playAudio();
-    return () => clearTimeout(timer);
   }, [activeTrack, isPlaying, customUrls]);
 
   // Handle Song Ended (Continuous Play)
