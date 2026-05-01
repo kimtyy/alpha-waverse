@@ -658,15 +658,13 @@ export default function AlphaWaverseEngine() {
             titlesMap[asset.asset_id] = `${asset.title} / ${cleanArtist} / ${cleanProducer}`;
             producersMap[asset.asset_id] = cleanProducer;
             
-            // CRITICAL FALLBACK: Construct URL if missing with CORRECT project ID
-            // Check if we have a local override first (from this session)
+            // CRITICAL FIX: Use the SDK's public URL generator to ensure correct formatting
+            const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(asset.asset_id);
+            
             if (customUrls[asset.asset_id]) {
               urlMap[asset.asset_id] = customUrls[asset.asset_id];
-            } else if (asset.url) {
-              urlMap[asset.asset_id] = asset.url;
             } else {
-              // Standard Supabase Public URL for our project
-              urlMap[asset.asset_id] = `https://axokpoqyabndljojebns.supabase.co/storage/v1/object/public/assets/${asset.asset_id}`;
+              urlMap[asset.asset_id] = publicUrl;
             }
           }
 
